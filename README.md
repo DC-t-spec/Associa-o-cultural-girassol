@@ -1,67 +1,98 @@
 # Associação Cultural Girassol + FITI
 
-Site premium em Next.js, TypeScript, Tailwind CSS, Framer Motion, Supabase, React Hook Form e Lucide React, pronto para Vercel.
+Site institucional da Associação Cultural Girassol e do FITI com estrutura de CMS editável via `/admin`, mantendo export estático para GitHub Pages e compatibilidade com Vercel.
 
 ## Instalação
 
 ```bash
-npx create-next-app@latest girassol-site --typescript --tailwind --eslint --app
-cd girassol-site
-npm install framer-motion lucide-react @supabase/supabase-js react-hook-form clsx tailwind-merge
-```
-
-Neste repositório o projecto já está criado. Para instalar:
-
-```bash
 npm install
-```
-
-
-## Validação de dependências
-
-O `package.json` mantém as dependências solicitadas: Next.js, React, React DOM, Framer Motion, Lucide React, Supabase JS, React Hook Form, clsx e tailwind-merge. O registry oficial está fixado em `.npmrc`:
-
-```bash
-npm config set registry https://registry.npmjs.org/
-npm install
-npm run build
-```
-
-Se uma rede corporativa/proxy bloquear o npm registry com `403 Forbidden`, o código continua preparado para fallback de conteúdo quando Supabase não estiver configurado, mas a instalação das dependências precisa de acesso ao registry oficial ou a um mirror autorizado.
-
-## Rodar localmente
-
-```bash
 npm run dev
 ```
 
-Depois abra `http://localhost:3000`.
+## Build e lint
 
-## Supabase
+```bash
+npm run lint
+npm run build
+```
 
-1. Crie um projecto no Supabase.
-2. Copie `.env.local.example` para `.env.local`.
-3. Preencha `NEXT_PUBLIC_SUPABASE_URL` e `NEXT_PUBLIC_SUPABASE_ANON_KEY`.
-4. Execute o SQL em `supabase/schema.sql` no SQL Editor do Supabase.
-5. Configure autenticação para proteger `/admin` em produção.
+## Como funciona o CMS
 
-Sem Supabase configurado, o site usa conteúdos temporários em `lib/data.ts`.
+O código mantém apenas a estrutura visual. O conteúdo público é carregado por `lib/cms.ts` nesta ordem:
 
-## Admin
+1. Supabase, quando `NEXT_PUBLIC_SUPABASE_URL` e `NEXT_PUBLIC_SUPABASE_ANON_KEY` existem.
+2. `lib/data.ts`, como fallback institucional inicial.
+3. Mensagem final de actualização quando uma área ainda não tem conteúdo.
 
-A rota `/admin` contém a estrutura de dashboard para actualizar associação, FITI, programação, galeria, notícias, parceiros, inscrições e contactos. Os cartões estão preparados para ligação operacional às tabelas Supabase.
+As páginas públicas respeitam `page_sections.order_index` e `page_sections.is_active`, por isso o gestor pode reordenar ou ocultar secções sem mexer no código.
 
-## Deploy na Vercel
+## Configurar Supabase
 
-1. Envie o repositório para GitHub/GitLab.
-2. Importe o projecto na Vercel.
-3. Configure as variáveis `NEXT_PUBLIC_SUPABASE_URL` e `NEXT_PUBLIC_SUPABASE_ANON_KEY`.
-4. Faça deploy com o preset Next.js.
+1. Criar projecto no Supabase.
+2. Executar `supabase/schema.sql` no SQL Editor.
+3. Executar `supabase/seed.sql` no SQL Editor.
+4. Criar um utilizador em Authentication.
+5. Definir variáveis no `.env.local`:
 
-## Logos e assets
+```bash
+NEXT_PUBLIC_SUPABASE_URL=https://PROJECT.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=...
+```
 
-Esta versão não inclui ficheiros binários de imagem para os logos. As marcas visuais foram substituídas por componentes CSS/Tailwind em `components/ui/GirassolLogo.tsx` e `components/ui/FitiLogo.tsx`, evitando avisos de diff sobre ficheiros binários.
+Sem Supabase configurado, `/admin` mostra a mensagem elegante de indisponibilidade e o site público continua a funcionar com fallback.
 
-Os logos oficiais poderão ser adicionados manualmente mais tarde na pasta `public/logos/`. Para usar imagens no futuro, basta trocar a implementação interna de `GirassolLogo` e `FitiLogo` por componentes de imagem, mantendo as chamadas aos componentes no restante site.
+## Primeiro admin
 
-Adicione vídeos opcionais em `public/videos/` para enriquecer os heroes sem tornar imagens obrigatórias.
+Crie o utilizador no painel Supabase Auth. As políticas RLS permitem escrita apenas a utilizadores autenticados. Para regras mais restritivas, adicione uma tabela de perfis com papel `admin` e ajuste as policies.
+
+## Tabelas principais
+
+- `pages`
+- `page_sections`
+- `section_fields`
+- `theme_settings`
+- `media_assets`
+- `navigation_items`
+- `social_links`
+- `content_revisions`
+- `news`
+- `partners`
+- `gallery`
+- `projects`
+- `impact_stats`
+- `timeline`
+- `fiti_editions`
+- `fiti_program`
+- `fiti_companies`
+- `fiti_workshops`
+- `fiti_applications`
+- `contact_messages`
+
+## Editar textos
+
+Aceda a `/admin`, entre com Supabase Auth, abra `Homepage`, `FITI` ou `Secções` e altere os campos gerados por `section_fields`. Cada campo define o tipo (`text`, `textarea`, `richtext`, `url`, `color`, `boolean`, `json`, etc.).
+
+## Editar imagens, vídeos e PDFs
+
+Use `Media Library` para guardar URLs vindas de Supabase Storage ou Cloudinary. O admin não grava binários em `public/` e o GitHub deve receber apenas código, SQL e texto.
+
+## Mudar fundo e cores
+
+Em `Aparência`, altere `theme_settings`: cores, gradientes, imagem de fundo, vídeo de fundo, partículas, luzes de palco, logo animado, intensidade de movimento, fontes e raios dos cards. O componente `DynamicBackground` aplica essas opções no site público.
+
+## Editar homepage e FITI
+
+- `Homepage`: gere `home_hero`, `home_about`, `home_mission_vision`, `home_timeline`, `home_what_we_do`, `home_projects`, `home_impact`, `home_gallery`, `home_news`, `home_partners` e `home_contact`.
+- `FITI`: gere `fiti_hero`, `fiti_about`, `fiti_current_edition`, `fiti_program`, `fiti_companies`, `fiti_workshops`, `fiti_tickets`, `fiti_archive`, `fiti_partners`, `fiti_press` e `fiti_contact`.
+
+## Publicar no GitHub Pages
+
+Mantenha o `next.config.mjs` existente para export estático/basePath. Não dependa de `app/api` para contacto, inscrições ou admin; use Supabase client directamente.
+
+## Publicar na Vercel
+
+Configure as mesmas variáveis Supabase no projecto Vercel e execute o deploy normalmente. API routes podem ser adicionadas apenas como opcionais, nunca como requisito do site.
+
+## Boas práticas de conteúdo
+
+Não usar Lorem ipsum, Sample, Example ou placeholders. Quando faltar conteúdo real, usar: “Conteúdo em actualização. Em breve serão publicadas novas informações.”
