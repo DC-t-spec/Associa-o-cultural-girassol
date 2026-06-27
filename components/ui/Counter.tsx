@@ -1,0 +1,2 @@
+'use client'; import { motion, useInView, useMotionValue, useSpring } from 'framer-motion'; import { useEffect, useRef, useState } from 'react';
+export function Counter({value,suffix=''}:{value:number;suffix?:string}){const ref=useRef(null); const inView=useInView(ref,{once:true}); const mv=useMotionValue(0); const spring=useSpring(mv,{duration:1800}); const [n,setN]=useState(0); useEffect(()=>spring.on('change',v=>setN(Math.round(v))),[spring]); useEffect(()=>{if(inView) mv.set(value)},[inView,mv,value]); return <motion.span ref={ref}>{n}{suffix}</motion.span>}
