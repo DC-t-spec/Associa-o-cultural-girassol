@@ -1,0 +1,1 @@
+export function VideoBackground({src}:{src:string}){return <video className="absolute inset-0 h-full w-full object-cover opacity-30" autoPlay muted loop playsInline><source src={src} type="video/mp4" /></video>}

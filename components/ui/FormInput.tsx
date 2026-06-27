@@ -1,0 +1,2 @@
+import type { UseFormRegisterReturn } from 'react-hook-form';
+export function FormInput({label,textarea,registration,type='text'}:{label:string;textarea?:boolean;registration:UseFormRegisterReturn;type?:string}){const cls='mt-2 w-full rounded-2xl border border-white/10 bg-black/40 px-4 py-3 text-white outline-none focus:border-sun'; return <label className="block text-sm text-zinc-200">{label}{textarea?<textarea className={cls} rows={5} {...registration}/>:<input type={type} className={cls} {...registration}/>}</label>}
