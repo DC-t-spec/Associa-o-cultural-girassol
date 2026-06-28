@@ -43,10 +43,11 @@ Sem Supabase configurado, `/admin` mostra a mensagem elegante de indisponibilida
 
 ## Primeiro admin
 
-Crie o utilizador no painel Supabase Auth. As políticas RLS permitem escrita apenas a utilizadores autenticados. Para regras mais restritivas, adicione uma tabela de perfis com papel `admin` e ajuste as policies.
+Crie o utilizador no painel Supabase Auth e, no SQL Editor, registe o UUID em `admin_profiles` com `role = admin`. A função `is_admin()` usa esse perfil para permitir gestão do CMS, media e formulários.
 
 ## Tabelas principais
 
+- `admin_profiles`
 - `pages`
 - `page_sections`
 - `section_fields`
@@ -65,6 +66,7 @@ Crie o utilizador no painel Supabase Auth. As políticas RLS permitem escrita ap
 - `fiti_program`
 - `fiti_companies`
 - `fiti_workshops`
+- `fiti_archive`
 - `fiti_applications`
 - `contact_messages`
 
@@ -95,4 +97,4 @@ Configure as mesmas variáveis Supabase no projecto Vercel e execute o deploy no
 
 ## Boas práticas de conteúdo
 
-Não usar Lorem ipsum, Sample, Example ou placeholders. Quando faltar conteúdo real, usar: “Conteúdo em actualização. Em breve serão publicadas novas informações.”
+Não usar textos genéricos. Quando faltar conteúdo real, usar: “Conteúdo em actualização. Em breve serão publicadas novas informações.”
