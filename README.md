@@ -30,7 +30,7 @@ As páginas públicas respeitam `page_sections.order_index` e `page_sections.is_
 
 1. Criar projecto no Supabase.
 2. Executar `supabase/schema.sql` no SQL Editor.
-3. Executar `supabase/seed.sql` no SQL Editor.
+5. Executar `supabase/seed.sql` no SQL Editor.
 4. Criar um utilizador em Authentication.
 5. Definir variáveis no `.env.local`:
 
@@ -102,21 +102,22 @@ Não usar textos genéricos. Quando faltar conteúdo real, usar: “Conteúdo em
 ## Como entrar no CMS
 
 1. Aceder a `/admin` (ou `/Associa-o-cultural-girassol/admin/` no GitHub Pages quando o site usa `basePath`).
-2. Criar projecto Supabase.
-3. Executar `supabase/schema.sql` no SQL Editor.
-4. Executar `supabase/seed.sql` no SQL Editor.
-5. Criar utilizador em Authentication.
-6. Copiar o User UID.
-7. Inserir o utilizador em `admin_profiles` com `role = 'admin'`.
-8. Configurar as variáveis:
+2. Em alternativa, fazer dois cliques no logo principal do site para abrir discretamente o CMS.
+3. Criar projecto Supabase.
+4. Executar `supabase/schema.sql` no SQL Editor.
+5. Executar `supabase/seed.sql` no SQL Editor.
+6. Criar utilizador em Authentication.
+7. Copiar o User UID.
+8. Inserir o utilizador em `admin_profiles` com `role = 'admin'`.
+9. Configurar as variáveis:
    - `NEXT_PUBLIC_SUPABASE_URL`
    - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-9. Fazer login em `/admin` com o email e password do utilizador criado.
+10. Fazer login em `/admin` com o email e password do utilizador criado.
 
 Se as variáveis Supabase não existirem, a página `/admin` não fica em branco: mostra uma mensagem elegante com os passos de configuração.
 
 ## Como activar o logo em movimento no fundo
 
-No CMS, aceda a `Admin > Aparência > Fundo animado > Logo em movimento` e active as opções de fundo animado e logo em movimento. A área de Aparência controla `animated_background_enabled`, `animated_logo_enabled`, `animated_logo_opacity`, `animated_logo_speed`, `background_motion_intensity`, cores, gradiente, partículas e luzes de palco.
+No CMS, aceda a `/admin`, abra `Aparência`, active `animated_background_enabled`, active `animated_logo_enabled` e ajuste `animated_logo_opacity` e `animated_logo_speed`. A área de Aparência controla `animated_background_enabled`, `animated_logo_enabled`, `animated_logo_opacity`, `animated_logo_speed`, `background_motion_intensity`, cores, gradiente, partículas e luzes de palco.
 
-Se carregar um logo no CMS (`animated_logo_url` ou imagem de fundo), esse ficheiro é usado no movimento. Se não existir PNG/JPG, o site usa automaticamente um símbolo SVG inline inspirado no sol/girassol e máscara teatral da Associação Cultural Girassol, mantendo baixa opacidade e respeitando `prefers-reduced-motion`.
+Se preencher `animated_logo_url`, esse ficheiro é usado no movimento. Se não existir PNG/JPG, o site usa automaticamente um símbolo SVG inline inspirado no sol/girassol e máscara teatral da Associação Cultural Girassol, mantendo baixa opacidade e respeitando `prefers-reduced-motion`.

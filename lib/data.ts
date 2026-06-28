@@ -3,7 +3,7 @@ export const siteSettings = {
   lightYellow: '#FFD166',
   orange: '#F97316',
   animatedBackground: true,
-  backgroundIntensity: '0.08',
+  backgroundIntensity: 'medium',
   whatsapp: 'https://wa.me/?text=Olá%20Associação%20Cultural%20Girassol',
   email: 'contacto@associacaoculturalgirassol.org',
   seoTitle: 'Associação Cultural Girassol',
@@ -45,10 +45,10 @@ export const cmsFallbackFields: Record<string, SectionField[]> = {
   fiti_program:[field('fiti_program','section_title','Título','Programação FITI'),field('fiti_program','section_subtitle','Subtítulo','Espectáculos, encontros e actividades da edição actual.','textarea',2),field('fiti_program','empty_state_text','Mensagem sem conteúdos',cmsEmptyState,'textarea',3),field('fiti_program','filters_enabled','Filtros activos','true','boolean',4),field('fiti_program','layout_style','Estilo','cards','select',5),field('fiti_program','button_text','Texto do botão','Ver detalhes','text',6)],
 };
 for (const section of cmsFallbackSections) cmsFallbackFields[section.section_key] ??= [field(section.section_key,'section_title','Título da secção',section.section_name),field(section.section_key,'section_text','Texto da secção',cmsEmptyState,'textarea',2)];
-export const cmsFallbackTheme: ThemeSettings = {primary_color:'#F7B500',secondary_color:'#111111',accent_color:'#F97316',background_color:'#050505',text_color:'#ffffff',card_color:'#18181b',button_style:'rounded',dominant_yellow_enabled:true,animated_background_enabled:true,animated_logo_enabled:true,background_motion_intensity:0.08,particles_enabled:true,stage_light_effect_enabled:true,stage_lights_enabled:true,border_radius:'1.5rem',font_heading:'Playfair Display',font_body:'Inter',background_type:'mixed',gradient_from:'#F7B500',gradient_to:'#050505',background_image_url:'',background_video_url:'',animated_logo_url:'',animated_logo_opacity:0.08,animated_logo_speed:42,overlay_opacity:0.55};
+export const cmsFallbackTheme: ThemeSettings = {primary_color:'#F7B500',secondary_color:'#111111',accent_color:'#F97316',background_color:'#050505',text_color:'#ffffff',card_color:'#18181b',button_style:'rounded',dominant_yellow_enabled:true,animated_background_enabled:true,animated_logo_enabled:true,background_motion_intensity:'medium',particles_enabled:true,stage_lights_enabled:true,border_radius:'1.5rem',font_heading:'Playfair Display',font_body:'Inter',background_type:'mixed',gradient_from:'#F7B500',gradient_to:'#050505',background_image_url:'',background_video_url:'',animated_logo_url:'',animated_logo_opacity:0.08,animated_logo_speed:42,overlay_opacity:0.55};
 export const cmsFallbackNavigation: NavigationItem[] = [
   ...[['#inicio','Início'],['#quem-somos','Quem Somos'],['#historia','História'],['#projectos','Projectos'],['#impacto','Impacto'],['#galeria','Galeria'],['#noticias','Notícias'],['#parceiros','Parceiros'],['#contacto','Contacto'],['/fiti','FITI']].map(([url,label],i)=>({id:`main-${i}`,location:'main_menu' as const,label,url,order_index:i+1,is_active:true,is_external:false})),
   ...[['/fiti#sobre','Sobre'],['/fiti#programacao','Programação'],['/fiti#companhias','Companhias'],['/fiti#oficinas','Oficinas'],['/fiti#arquivo','Arquivo'],['/fiti#contacto','Contacto']].map(([url,label],i)=>({id:`fiti-${i}`,location:'fiti_menu' as const,label,url,order_index:i+1,is_active:true,is_external:false})),
-  ...[['/','Associação'],['/fiti','FITI'],['/#contacto','Contacto'],['/admin','Admin']].map(([url,label],i)=>({id:`footer-${i}`,location:'footer_menu' as const,label,url,order_index:i+1,is_active:true,is_external:false})),
+  ...[['/','Associação'],['/fiti','FITI'],['/#contacto','Contacto']].map(([url,label],i)=>({id:`footer-${i}`,location:'footer_menu' as const,label,url,order_index:i+1,is_active:true,is_external:false})),
 ];
 export const cmsFallbackMedia: MediaAsset[] = [];
