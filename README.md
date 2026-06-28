@@ -24,7 +24,7 @@ O código mantém apenas a estrutura visual. O conteúdo público é carregado p
 2. `lib/data.ts`, como fallback institucional inicial.
 3. Mensagem final de actualização quando uma área ainda não tem conteúdo.
 
-As páginas públicas respeitam `page_sections.order_index` e `page_sections.is_active`, por isso o gestor pode reordenar ou ocultar secções sem mexer no código.
+As páginas públicas respeitam `page_sections.order_index` e `page_sections.is_active`, por isso o gestor pode reordenar ou ocultar secções sem mexer no código. Sem Supabase configurado, o site público continua funcional com os dados de fallback e `/admin` mostra um aviso elegante de configuração em vez de falhar.
 
 ## Configurar Supabase
 
@@ -32,14 +32,59 @@ As páginas públicas respeitam `page_sections.order_index` e `page_sections.is_
 2. Executar `supabase/schema.sql` no SQL Editor.
 5. Executar `supabase/seed.sql` no SQL Editor.
 4. Criar um utilizador em Authentication.
-5. Definir variáveis no `.env.local`:
+5. Registar o utilizador em `admin_profiles` com `role = 'admin'`.
+6. Configurar as variáveis públicas do frontend:
 
 ```bash
-NEXT_PUBLIC_SUPABASE_URL=https://PROJECT.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=...
+NEXT_PUBLIC_SUPABASE_URL=https://jrnxsznjtszjicpwtqck.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=<anon key do projecto>
 ```
 
-Sem Supabase configurado, `/admin` mostra a mensagem elegante de indisponibilidade e o site público continua a funcionar com fallback.
+A anon key deve ser configurada no ambiente onde o site é executado. Nunca coloque a anon key em ficheiros versionados e nunca use a `service_role` key no frontend.
+
+## Variáveis de ambiente locais
+
+Crie um ficheiro `.env.local` a partir de `.env.local.example` e preencha os valores localmente:
+
+```bash
+cp .env.local.example .env.local
+```
+
+```bash
+NEXT_PUBLIC_SUPABASE_URL=https://jrnxsznjtszjicpwtqck.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=<anon key do projecto>
+```
+
+O ficheiro `.env.local` não deve ser publicado no GitHub. Se uma variável ficar vazia, o fallback de `lib/data.ts` mantém o site público activo e o `/admin` mostra o aviso de configuração.
+
+## Variáveis no GitHub Actions
+
+O workflow de GitHub Pages já define `NEXT_PUBLIC_SUPABASE_URL` com o projecto real. Configure apenas a anon key em:
+
+`GitHub repository > Settings > Secrets and variables > Actions > Repository secrets`
+
+Crie o segredo:
+
+```text
+NEXT_PUBLIC_SUPABASE_ANON_KEY
+```
+
+O build usa esse segredo como variável de ambiente. Não guarde a anon key directamente no workflow e não configure `service_role` em GitHub Actions para o frontend.
+
+## Variáveis na Vercel
+
+No painel da Vercel, abra:
+
+`Project Settings > Environment Variables`
+
+Adicione as variáveis para Production, Preview e Development, conforme necessário:
+
+```text
+NEXT_PUBLIC_SUPABASE_URL=https://jrnxsznjtszjicpwtqck.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=<anon key do projecto>
+```
+
+Depois faça redeploy. A Vercel injecta as variáveis no build e no runtime do frontend. Não use a `service_role` key em variáveis `NEXT_PUBLIC_*`.
 
 ## Primeiro admin
 
@@ -74,6 +119,8 @@ Crie o utilizador no painel Supabase Auth e, no SQL Editor, registe o UUID em `a
 
 Aceda a `/admin`, entre com Supabase Auth, abra `Homepage`, `FITI` ou `Secções` e altere os campos gerados por `section_fields`. Cada campo define o tipo (`text`, `textarea`, `richtext`, `url`, `color`, `boolean`, `json`, etc.).
 
+Também pode abrir o CMS com dois cliques no logo principal do site, mantendo o acesso directo por `/admin`.
+
 ## Editar imagens, vídeos e PDFs
 
 Use `Media Library` para guardar URLs vindas de Supabase Storage ou Cloudinary. O admin não grava binários em `public/` e o GitHub deve receber apenas código, SQL e texto.
@@ -89,7 +136,7 @@ Em `Aparência`, altere `theme_settings`: cores, gradientes, imagem de fundo, v�
 
 ## Publicar no GitHub Pages
 
-Mantenha o `next.config.mjs` existente para export estático/basePath. Não dependa de `app/api` para contacto, inscrições ou admin; use Supabase client directamente.
+Mantenha o `next.config.mjs` existente para export estático/basePath. Não dependa de `app/api` para contacto, inscrições ou admin; use Supabase client directamente. O workflow em `.github/workflows/deploy.yml` mantém compatibilidade com GitHub Pages e passa as variáveis públicas do Supabase durante o build.
 
 ## Publicar na Vercel
 
@@ -101,19 +148,17 @@ Não usar textos genéricos. Quando faltar conteúdo real, usar: “Conteúdo em
 
 ## Como entrar no CMS
 
-1. Aceder a `/admin`.
-2. No GitHub Pages, aceder a `/Associa-o-cultural-girassol/admin/`.
-3. Em alternativa, fazer dois cliques no logo principal do site para abrir discretamente o CMS.
-4. Criar projecto no Supabase.
-5. Executar `supabase/schema.sql` no SQL Editor.
-6. Executar `supabase/seed.sql` no SQL Editor.
-7. Criar utilizador em Authentication.
-8. Copiar o User UID.
-9. Inserir o utilizador em `admin_profiles` com `role = 'admin'`.
-10. Configurar as variáveis:
-    - `NEXT_PUBLIC_SUPABASE_URL`
-    - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-11. Fazer login em `/admin` com o email e password do utilizador criado.
+1. Aceder a `/admin` (ou `/Associa-o-cultural-girassol/admin/` no GitHub Pages quando o site usa `basePath`) ou dar dois cliques no logo principal do site.
+2. Criar projecto Supabase.
+3. Executar `supabase/schema.sql` no SQL Editor.
+4. Executar `supabase/seed.sql` no SQL Editor.
+5. Criar utilizador em Authentication.
+6. Copiar o User UID.
+7. Inserir o utilizador em `admin_profiles` com `role = 'admin'`.
+8. Configurar as variáveis:
+   - `NEXT_PUBLIC_SUPABASE_URL`
+   - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+9. Fazer login em `/admin` com o email e password do utilizador criado.
 
 Se as variáveis Supabase não existirem, a página `/admin` não fica em branco: mostra uma mensagem elegante com os passos de configuração.
 

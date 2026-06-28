@@ -6,7 +6,7 @@ node_modules/
 out/
 
 # local environment files
-.env.local
+.env*.local
 
 # logs
 npm-debug.log*
