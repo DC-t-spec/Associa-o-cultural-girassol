@@ -1,6 +1,7 @@
 import { supabase, isSupabaseConfigured } from '@/lib/supabase';
 import { siteSettings, cmsFallbackPages, cmsFallbackSections, cmsFallbackFields, cmsFallbackNavigation, cmsFallbackTheme, cmsFallbackMedia } from '@/lib/data';
 import type { MediaAsset, NavigationItem, Page, PageSection, SectionField, ThemeSettings } from '@/types/cms';
+import { toSafeString } from '@/lib/utils';
 
 const empty = 'Conteúdo em actualização. Em breve serão publicadas novas informações.';
 const SUPABASE_READ_TIMEOUT_MS = 5000;
@@ -60,12 +61,14 @@ export async function getSectionFields(sectionKey: string): Promise<SectionField
 }
 
 function normaliseThemeValue(value: unknown, fallback: unknown) {
-  if (typeof fallback === 'boolean') return value === true || value === 'true';
+  if (typeof fallback === 'boolean') return toSafeString(value, 'false') === 'true';
+
   if (typeof fallback === 'number') {
-    const parsed = Number(value);
+    const parsed = Number(toSafeString(value, String(fallback)));
     return Number.isFinite(parsed) ? parsed : fallback;
   }
-  return value ?? fallback;
+
+  return toSafeString(value, toSafeString(fallback));
 }
 
 export async function getThemeSettings(): Promise<ThemeSettings> {
