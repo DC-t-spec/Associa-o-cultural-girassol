@@ -1,4 +1,5 @@
 import type { ThemeSettings } from '@/types/cms';
+import { isNonEmptyString, toSafeString } from '@/lib/utils';
 
 function toNumber(value: unknown, fallback: number) {
   const parsed = Number(value);
@@ -12,21 +13,27 @@ const motionScale: Record<string, { drift: number; particles: number; lights: nu
 };
 
 export function DynamicBackground({ settings, subtle = false }: { settings: ThemeSettings; subtle?: boolean }) {
-  const background = settings.background_color || '#050505';
+  const background = toSafeString(settings.background_color, '#050505').trim() || '#050505';
 
   if (!settings.animated_background_enabled) {
     return <div aria-hidden className="pointer-events-none fixed inset-0 z-0" style={{ background }} />;
   }
 
-  const intensity = motionScale[String(settings.background_motion_intensity || 'medium')] ?? motionScale.medium;
+  const intensityKey = toSafeString(settings.background_motion_intensity, 'medium').trim() || 'medium';
+  const intensity = motionScale[intensityKey] ?? motionScale.medium;
   const overlay = Math.max(0, Math.min(1, toNumber(settings.overlay_opacity, 0.55)));
   const logoOpacity = Math.max(0.01, Math.min(0.18, toNumber(settings.animated_logo_opacity, 0.08) * (subtle ? 0.55 : 1)));
   const speed = Math.max(18, toNumber(settings.animated_logo_speed, 42) / intensity.drift);
-  const primary = settings.primary_color || '#F7B500';
-  const secondary = settings.accent_color || settings.secondary_color || '#F97316';
-  const stageLightsEnabled = settings.stage_lights_enabled;
-  const useGradient = settings.background_type !== 'none';
-  const logoUrl = settings.animated_logo_url?.trim();
+  const primary = toSafeString(settings.primary_color, '#F7B500').trim() || '#F7B500';
+  const secondary = toSafeString(settings.accent_color, toSafeString(settings.secondary_color, '#F97316')).trim() || '#F97316';
+  const stageLightsEnabled = settings.stage_lights_enabled === true;
+  const backgroundType = toSafeString(settings.background_type, 'mixed').trim() || 'mixed';
+  const useGradient = backgroundType !== 'none';
+  const logoUrl = isNonEmptyString(settings.animated_logo_url) ? settings.animated_logo_url.trim() : '';
+  const gradientFrom = toSafeString(settings.gradient_from, primary).trim() || primary;
+  const gradientTo = toSafeString(settings.gradient_to, background).trim() || background;
+  const backgroundImageUrl = isNonEmptyString(settings.background_image_url) ? settings.background_image_url.trim() : '';
+  const backgroundVideoUrl = isNonEmptyString(settings.background_video_url) ? settings.background_video_url.trim() : '';
 
   return (
     <div
@@ -34,15 +41,15 @@ export function DynamicBackground({ settings, subtle = false }: { settings: Them
       className="pointer-events-none fixed inset-0 z-0 overflow-hidden"
       style={{
         background: useGradient
-          ? `radial-gradient(circle at 16% 8%, ${primary}33, transparent 30%), radial-gradient(circle at 86% 12%, ${secondary}22, transparent 34%), linear-gradient(135deg, ${settings.gradient_from || primary}33, ${settings.gradient_to || background})`
+          ? `radial-gradient(circle at 16% 8%, ${primary}33, transparent 30%), radial-gradient(circle at 86% 12%, ${secondary}22, transparent 34%), linear-gradient(135deg, ${gradientFrom}33, ${gradientTo})`
           : background,
       }}
     >
-      {settings.background_image_url && settings.background_type === 'image' && (
-        <div className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: `url(${settings.background_image_url})`, opacity: 1 - overlay }} />
+      {backgroundImageUrl && backgroundType === 'image' && (
+        <div className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: `url(${backgroundImageUrl})`, opacity: 1 - overlay }} />
       )}
-      {settings.background_video_url && settings.background_type === 'video' && (
-        <video className="absolute inset-0 h-full w-full object-cover" src={settings.background_video_url} autoPlay muted loop playsInline style={{ opacity: 1 - overlay }} />
+      {backgroundVideoUrl && backgroundType === 'video' && (
+        <video className="absolute inset-0 h-full w-full object-cover" src={backgroundVideoUrl} autoPlay muted loop playsInline style={{ opacity: 1 - overlay }} />
       )}
       {settings.animated_logo_enabled && (
         <>
