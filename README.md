@@ -59,17 +59,20 @@ O ficheiro `.env.local` não deve ser publicado no GitHub. Se uma variável fica
 
 ## Variáveis no GitHub Actions
 
-O workflow de GitHub Pages já define `NEXT_PUBLIC_SUPABASE_URL` com o projecto real. Configure apenas a anon key em:
+No GitHub Pages, as variáveis `NEXT_PUBLIC_*` precisam de existir como GitHub Secrets e também precisam de ser passadas explicitamente ao passo `npm run build` no workflow `.github/workflows/deploy.yml`, porque o export estático incorpora estes valores públicos durante o build.
+
+Configure os secrets em:
 
 `GitHub repository > Settings > Secrets and variables > Actions > Repository secrets`
 
-Crie o segredo:
+Crie os secrets:
 
 ```text
+NEXT_PUBLIC_SUPABASE_URL
 NEXT_PUBLIC_SUPABASE_ANON_KEY
 ```
 
-O build usa esse segredo como variável de ambiente. Não guarde a anon key directamente no workflow e não configure `service_role` em GitHub Actions para o frontend.
+O workflow passa esses secrets apenas como variáveis de ambiente do build. Não guarde a anon key directamente no workflow, README ou outros ficheiros versionados, e não configure `service_role` em GitHub Actions para o frontend.
 
 ## Variáveis na Vercel
 
