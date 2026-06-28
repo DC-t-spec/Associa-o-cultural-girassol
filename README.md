@@ -170,3 +170,16 @@ Se as variáveis Supabase não existirem, a página `/admin` não fica em branco
 No CMS, aceda a `/admin`, abra `Aparência`, active `animated_background_enabled`, active `animated_logo_enabled` e ajuste `animated_logo_opacity` e `animated_logo_speed`. A área de Aparência controla `animated_background_enabled`, `animated_logo_enabled`, `animated_logo_opacity`, `animated_logo_speed`, `background_motion_intensity`, cores, gradiente, partículas e luzes de palco.
 
 Se preencher `animated_logo_url`, esse ficheiro é usado no movimento. Se não existir PNG/JPG, o site usa automaticamente um símbolo SVG inline inspirado no sol/girassol e máscara teatral da Associação Cultural Girassol, mantendo baixa opacidade e respeitando `prefers-reduced-motion`.
+
+## Como mudar logotipos no CMS
+
+1. Entrar no CMS em `/admin` com o utilizador configurado no Supabase Auth.
+2. Ir a **Media Library** no CMS ou ao **Supabase Storage**.
+3. Carregar o logotipo pretendido no storage/media.
+4. Copiar o URL público da imagem carregada.
+5. Ir a **Identidade Visual** no menu lateral do CMS.
+6. Colar o URL em `site_logo_url` para o logotipo principal da Associação ou em `fiti_logo_url` para o logotipo do FITI. Também pode preencher `favicon_url`, `footer_logo_url`, `hero_logo_url` e `animated_logo_url` conforme necessário.
+7. Guardar cada campo alterado com o botão **Guardar**.
+8. Actualizar o site público para confirmar a navbar, hero, rodapé, página FITI e fundo animado.
+
+Se um URL estiver vazio ou a imagem não carregar, o site mantém automaticamente os logotipos CSS/SVG de fallback, sem exigir ficheiros PNG/JPG no GitHub.
