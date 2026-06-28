@@ -82,3 +82,12 @@ do $$ declare t text; begin foreach t in array array['pages','page_sections','se
 insert into storage.buckets (id,name,public) values ('site-media','site-media',true) on conflict (id) do update set public=true;
 create policy "Public read site media" on storage.objects for select using (bucket_id='site-media');
 create policy "Admins manage site media" on storage.objects for all using (bucket_id='site-media' and public.is_admin()) with check (bucket_id='site-media' and public.is_admin());
+
+-- Supabase Storage policies for Media Library uploads.
+-- Create a public bucket named site-media in Supabase Storage before uploading.
+drop policy if exists "Authenticated upload site media" on storage.objects;
+drop policy if exists "Authenticated update site media" on storage.objects;
+drop policy if exists "Authenticated delete site media" on storage.objects;
+create policy "Authenticated upload site media" on storage.objects for insert to authenticated with check (bucket_id = 'site-media');
+create policy "Authenticated update site media" on storage.objects for update to authenticated using (bucket_id = 'site-media') with check (bucket_id = 'site-media');
+create policy "Authenticated delete site media" on storage.objects for delete to authenticated using (bucket_id = 'site-media');
