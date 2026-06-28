@@ -1,4 +1,5 @@
-import type { Metadata } from 'next'; import { Inter, Playfair_Display } from 'next/font/google'; import './globals.css'; import { AnimatedBackground } from '@/components/ui/AnimatedBackground';
-const inter=Inter({subsets:['latin'],variable:'--font-inter'}); const playfair=Playfair_Display({subsets:['latin'],variable:'--font-playfair'});
+import type { Metadata } from 'next';
+import './globals.css';
+
 export const metadata: Metadata={metadataBase:new URL('https://girassol-site.vercel.app'),title:'Associação Cultural Girassol | Teatro, Cultura e Juventude em Moçambique',description:'Site oficial da Associação Cultural Girassol, organização cultural moçambicana dedicada ao teatro, formação artística, intercâmbio cultural, acção social e ao FITI – Festival Internacional Teatro de Inverno.',openGraph:{title:'Associação Cultural Girassol',description:'Teatro, juventude, memória e transformação cultural em Moçambique.',type:'website'},twitter:{card:'summary_large_image'}};
-export default function RootLayout({children}:{children:React.ReactNode}){return <html lang="pt"><body className={`${inter.variable} ${playfair.variable} font-sans`}><AnimatedBackground/>{children}</body></html>}
+export default function RootLayout({children}:{children:React.ReactNode}){return <html lang="pt"><body className="font-sans">{children}</body></html>}
