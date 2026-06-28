@@ -36,7 +36,7 @@ As páginas públicas respeitam `page_sections.order_index` e `page_sections.is_
 6. Configurar as variáveis públicas do frontend:
 
 ```bash
-NEXT_PUBLIC_SUPABASE_URL=https://jrnxsznjtszjicpwtqck.supabase.co
+NEXT_PUBLIC_SUPABASE_URL=https://<project-ref>.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=<anon key do projecto>
 ```
 
@@ -51,7 +51,7 @@ cp .env.local.example .env.local
 ```
 
 ```bash
-NEXT_PUBLIC_SUPABASE_URL=https://jrnxsznjtszjicpwtqck.supabase.co
+NEXT_PUBLIC_SUPABASE_URL=https://<project-ref>.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=<anon key do projecto>
 ```
 
@@ -83,7 +83,7 @@ No painel da Vercel, abra:
 Adicione as variáveis para Production, Preview e Development, conforme necessário:
 
 ```text
-NEXT_PUBLIC_SUPABASE_URL=https://jrnxsznjtszjicpwtqck.supabase.co
+NEXT_PUBLIC_SUPABASE_URL=https://<project-ref>.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=<anon key do projecto>
 ```
 
@@ -183,3 +183,57 @@ Se preencher `animated_logo_url`, esse ficheiro é usado no movimento. Se não e
 8. Actualizar o site público para confirmar a navbar, hero, rodapé, página FITI e fundo animado.
 
 Se um URL estiver vazio ou a imagem não carregar, o site mantém automaticamente os logotipos CSS/SVG de fallback, sem exigir ficheiros PNG/JPG no GitHub.
+
+## Manual operacional do CMS depois do checkup
+
+### Media Library
+
+A área **Media Library** em `/admin` envia imagens, vídeos e PDFs para o bucket público `site-media`. O formulário pede título, descrição, texto alternativo, categoria e ficheiro. Depois do upload, o CMS obtém o URL público do Supabase Storage, grava o registo em `media_assets`, actualiza a listagem, permite copiar o URL, seleccionar o ficheiro em campos de identidade visual e apagar o registo quando necessário.
+
+Pastas usadas automaticamente:
+
+- `logos/`
+- `fiti/`
+- `gallery/`
+- `partners/`
+- `news/`
+- `documents/`
+- `videos/`
+
+### Identidade Visual
+
+Em **Identidade Visual**, cada campo tem label amigável, descrição, input, preview e botão **Seleccionar da Media Library**. O botão abre uma lista compacta dos ficheiros carregados e preenche o URL seleccionado. Ao guardar, o CMS faz `upsert` em `theme_settings`.
+
+Chaves principais:
+
+- `site_logo_url`, `site_logo_alt`
+- `fiti_logo_url`, `fiti_logo_alt`
+- `favicon_url`
+- `footer_logo_url`
+- `hero_logo_url`
+- `animated_logo_url`, `animated_logo_enabled`, `animated_logo_opacity`, `animated_logo_speed`
+
+### Aparência
+
+Em **Aparência**, os campos foram apresentados com nomes humanos, como “Cor principal”, “Cor secundária”, “Activar fundo animado”, “Vídeo de fundo”, “Luzes de palco activas” e “Opacidade da camada”. Todos guardam em `theme_settings` e o site mantém fallback visual se alguma chave estiver vazia.
+
+### Homepage e FITI
+
+As áreas **Homepage** e **FITI** listam as secções existentes (`page_sections`) e campos (`section_fields`) que servem de base para editar textos, botões, mensagens de estado, títulos e descrições. Quando Supabase estiver vazio, os dados institucionais em `lib/data.ts` impedem páginas em branco.
+
+### Menus e conteúdos estruturados
+
+As áreas **Menus**, **Galeria**, **Notícias**, **Projectos**, **Timeline**, **Impacto**, **Parceiros**, **Programação FITI**, **Companhias FITI**, **Oficinas FITI** e **Arquivo FITI** têm interface de listagem, criação, edição, guardar, activar/desactivar e apagar quando aplicável. Cada área lê a respectiva tabela Supabase e mostra dados institucionais de fallback se a tabela ainda não tiver conteúdos.
+
+### Formulários, contactos e imprensa
+
+Os formulários públicos gravam directamente no Supabase através do cliente público quando configurado. No CMS, **Contactos** e **Imprensa** listam mensagens recebidas e permitem acompanhar o estado. Sem Supabase, a interface mostra uma mensagem clara em vez de quebrar.
+
+## Resolver erros comuns
+
+- **`/admin` mostra “Área de gestão indisponível”**: confirme `NEXT_PUBLIC_SUPABASE_URL` e `NEXT_PUBLIC_SUPABASE_ANON_KEY` no ambiente local, GitHub Secrets ou Vercel.
+- **Login falha**: confirme que o utilizador existe em Supabase Auth e que o mesmo UUID está em `admin_profiles` com `role = 'admin'`.
+- **Upload falha por bucket inexistente**: execute `supabase/schema.sql` ou crie o bucket público `site-media` manualmente se o SQL não tiver permissões para storage.
+- **Media Library lista vazia**: confirme que `media_assets` existe, que RLS foi aplicado e que o utilizador está autenticado.
+- **Build de GitHub Pages sem Supabase**: é esperado continuar a passar; o site público usa fallback e o CMS mostra aviso de configuração.
+- **Logotipo não aparece**: confirme que o URL público abre no navegador. Se falhar, o site volta automaticamente para `GirassolLogo`, `FitiLogo` ou símbolo SVG do fundo animado.
