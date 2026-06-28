@@ -1,9 +1,10 @@
 import { createClient } from '@supabase/supabase-js';
+import { toSafeString } from './utils';
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim();
+const supabaseUrl = toSafeString(process.env.NEXT_PUBLIC_SUPABASE_URL).trim();
+const supabaseAnonKey = toSafeString(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY).trim();
 
-function hasValidSupabaseUrl(value: string | undefined): value is string {
+function hasValidSupabaseUrl(value: string): value is string {
   if (!value) return false;
 
   try {
