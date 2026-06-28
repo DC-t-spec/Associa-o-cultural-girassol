@@ -4,9 +4,10 @@ import type { MediaAsset, NavigationItem, Page, PageSection, SectionField, Theme
 
 const empty = 'Conteúdo em actualização. Em breve serão publicadas novas informações.';
 const SUPABASE_READ_TIMEOUT_MS = 5000;
+const getBrowserSupabase = () => (typeof window !== 'undefined' && isSupabaseConfigured ? supabase : null);
 
 async function withFallback<T>(request: PromiseLike<{ data: T | null; error: unknown }>, fallback: T): Promise<T> {
-  if (!supabase || !isSupabaseConfigured) return fallback;
+  if (!getBrowserSupabase()) return fallback;
 
   let timeout: ReturnType<typeof setTimeout> | undefined;
   try {
@@ -35,24 +36,27 @@ export function getFallbackTheme(): ThemeSettings {
 
 export async function getPage(slug: string): Promise<Page> {
   const fallback = getFallbackPage(slug);
-  if (!supabase || !isSupabaseConfigured) return fallback;
-  return withFallback<Page>(supabase.from('pages').select('*').eq('slug', slug).maybeSingle(), fallback);
+  const db = getBrowserSupabase();
+  if (!db) return fallback;
+  return withFallback<Page>(db.from('pages').select('*').eq('slug', slug).maybeSingle(), fallback);
 }
 
 export async function getPageSections(slug: string): Promise<PageSection[]> {
   const fallback = cmsFallbackSections.filter((s) => s.page_slug === slug && s.is_active).sort((a, b) => a.order_index - b.order_index);
-  if (!supabase || !isSupabaseConfigured) return fallback;
-  return withFallback<PageSection[]>(supabase.from('page_sections').select('*').eq('page_slug', slug).eq('is_active', true).order('order_index'), fallback);
+  const db = getBrowserSupabase();
+  if (!db) return fallback;
+  return withFallback<PageSection[]>(db.from('page_sections').select('*').eq('page_slug', slug).eq('is_active', true).order('order_index'), fallback);
 }
 
 export async function getSectionFields(sectionKey: string): Promise<SectionField[]> {
   const fallback = cmsFallbackFields[sectionKey] ?? [{ id: `${sectionKey}-empty`, section_id: sectionKey, field_key: 'empty_state_text', field_label: 'Mensagem padrão', field_type: 'textarea', field_value: empty, order_index: 1 } satisfies SectionField];
-  if (!supabase || !isSupabaseConfigured) return fallback;
+  const db = getBrowserSupabase();
+  if (!db) return fallback;
 
-  const section = await withFallback<{ id: string }>(supabase.from('page_sections').select('id').eq('section_key', sectionKey).maybeSingle(), { id: '' });
+  const section = await withFallback<{ id: string }>(db.from('page_sections').select('id').eq('section_key', sectionKey).maybeSingle(), { id: '' });
   if (!section.id) return fallback;
 
-  return withFallback<SectionField[]>(supabase.from('section_fields').select('*').eq('section_id', section.id).order('order_index'), fallback);
+  return withFallback<SectionField[]>(db.from('section_fields').select('*').eq('section_id', section.id).order('order_index'), fallback);
 }
 
 function normaliseThemeValue(value: unknown, fallback: unknown) {
@@ -65,9 +69,10 @@ function normaliseThemeValue(value: unknown, fallback: unknown) {
 }
 
 export async function getThemeSettings(): Promise<ThemeSettings> {
-  if (!supabase || !isSupabaseConfigured) return getFallbackTheme();
+  const db = getBrowserSupabase();
+  if (!db) return getFallbackTheme();
 
-  const data = await withFallback<Array<{ key: string; value: string | null; value_json: unknown }>>(supabase.from('theme_settings').select('key,value,value_json'), []);
+  const data = await withFallback<Array<{ key: string; value: string | null; value_json: unknown }>>(db.from('theme_settings').select('key,value,value_json'), []);
   if (!data.length) return getFallbackTheme();
 
   return data.reduce((acc, row) => {
@@ -78,11 +83,13 @@ export async function getThemeSettings(): Promise<ThemeSettings> {
 
 export async function getNavigation(location: NavigationItem['location']): Promise<NavigationItem[]> {
   const fallback = cmsFallbackNavigation.filter((n) => n.location === location && n.is_active).sort((a, b) => a.order_index - b.order_index);
-  if (!supabase || !isSupabaseConfigured) return fallback;
-  return withFallback<NavigationItem[]>(supabase.from('navigation_items').select('*').eq('location', location).eq('is_active', true).order('order_index'), fallback);
+  const db = getBrowserSupabase();
+  if (!db) return fallback;
+  return withFallback<NavigationItem[]>(db.from('navigation_items').select('*').eq('location', location).eq('is_active', true).order('order_index'), fallback);
 }
 
 export async function getMediaAssets(): Promise<MediaAsset[]> {
-  if (!supabase || !isSupabaseConfigured) return cmsFallbackMedia;
-  return withFallback<MediaAsset[]>(supabase.from('media_assets').select('*').order('created_at', { ascending: false }), cmsFallbackMedia);
+  const db = getBrowserSupabase();
+  if (!db) return cmsFallbackMedia;
+  return withFallback<MediaAsset[]>(db.from('media_assets').select('*').order('created_at', { ascending: false }), cmsFallbackMedia);
 }
