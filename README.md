@@ -101,18 +101,19 @@ Não usar textos genéricos. Quando faltar conteúdo real, usar: “Conteúdo em
 
 ## Como entrar no CMS
 
-1. Aceder a `/admin` (ou `/Associa-o-cultural-girassol/admin/` no GitHub Pages quando o site usa `basePath`).
-2. Em alternativa, fazer dois cliques no logo principal do site para abrir discretamente o CMS.
-3. Criar projecto Supabase.
-4. Executar `supabase/schema.sql` no SQL Editor.
-5. Executar `supabase/seed.sql` no SQL Editor.
-6. Criar utilizador em Authentication.
-7. Copiar o User UID.
-8. Inserir o utilizador em `admin_profiles` com `role = 'admin'`.
-9. Configurar as variáveis:
-   - `NEXT_PUBLIC_SUPABASE_URL`
-   - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-10. Fazer login em `/admin` com o email e password do utilizador criado.
+1. Aceder a `/admin`.
+2. No GitHub Pages, aceder a `/Associa-o-cultural-girassol/admin/`.
+3. Em alternativa, fazer dois cliques no logo principal do site para abrir discretamente o CMS.
+4. Criar projecto no Supabase.
+5. Executar `supabase/schema.sql` no SQL Editor.
+6. Executar `supabase/seed.sql` no SQL Editor.
+7. Criar utilizador em Authentication.
+8. Copiar o User UID.
+9. Inserir o utilizador em `admin_profiles` com `role = 'admin'`.
+10. Configurar as variáveis:
+    - `NEXT_PUBLIC_SUPABASE_URL`
+    - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+11. Fazer login em `/admin` com o email e password do utilizador criado.
 
 Se as variáveis Supabase não existirem, a página `/admin` não fica em branco: mostra uma mensagem elegante com os passos de configuração.
 
