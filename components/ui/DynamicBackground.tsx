@@ -5,35 +5,43 @@ function toNumber(value: unknown, fallback: number) {
   return Number.isFinite(parsed) ? parsed : fallback;
 }
 
+const motionScale: Record<string, { drift: number; particles: number; lights: number }> = {
+  low: { drift: 0.65, particles: 0.6, lights: 0.65 },
+  medium: { drift: 1, particles: 1, lights: 1 },
+  high: { drift: 1.35, particles: 1.25, lights: 1.25 },
+};
+
 export function DynamicBackground({ settings, subtle = false }: { settings: ThemeSettings; subtle?: boolean }) {
+  const background = settings.background_color || '#050505';
+
   if (!settings.animated_background_enabled) {
-    return <div aria-hidden className="pointer-events-none fixed inset-0 -z-10" style={{ background: settings.background_color }} />;
+    return <div aria-hidden className="pointer-events-none fixed inset-0 z-0" style={{ background }} />;
   }
 
+  const intensity = motionScale[String(settings.background_motion_intensity || 'medium')] ?? motionScale.medium;
   const overlay = Math.max(0, Math.min(1, toNumber(settings.overlay_opacity, 0.55)));
   const logoOpacity = Math.max(0.01, Math.min(0.18, toNumber(settings.animated_logo_opacity, 0.08) * (subtle ? 0.55 : 1)));
-  const speed = Math.max(18, toNumber(settings.animated_logo_speed, 42));
+  const speed = Math.max(18, toNumber(settings.animated_logo_speed, 42) / intensity.drift);
   const primary = settings.primary_color || '#F7B500';
-  const secondary = settings.secondary_color || '#F97316';
-  const background = settings.background_color || '#050505';
-  const stageLightsEnabled = settings.stage_lights_enabled ?? settings.stage_light_effect_enabled;
+  const secondary = settings.accent_color || settings.secondary_color || '#F97316';
+  const stageLightsEnabled = settings.stage_lights_enabled;
   const useGradient = settings.background_type !== 'none';
-  const logoUrl = settings.animated_logo_url || settings.background_image_url;
+  const logoUrl = settings.animated_logo_url?.trim();
 
   return (
     <div
       aria-hidden
-      className="pointer-events-none fixed inset-0 -z-10 overflow-hidden"
+      className="pointer-events-none fixed inset-0 z-0 overflow-hidden"
       style={{
         background: useGradient
-          ? `radial-gradient(circle at 16% 8%, ${primary}33, transparent 30%), radial-gradient(circle at 86% 12%, ${secondary}22, transparent 34%), linear-gradient(135deg, ${settings.gradient_from || primary}22, ${settings.gradient_to || background})`
+          ? `radial-gradient(circle at 16% 8%, ${primary}33, transparent 30%), radial-gradient(circle at 86% 12%, ${secondary}22, transparent 34%), linear-gradient(135deg, ${settings.gradient_from || primary}33, ${settings.gradient_to || background})`
           : background,
       }}
     >
-      {settings.background_image_url && !settings.animated_logo_enabled && (
+      {settings.background_image_url && settings.background_type === 'image' && (
         <div className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: `url(${settings.background_image_url})`, opacity: 1 - overlay }} />
       )}
-      {settings.background_video_url && (
+      {settings.background_video_url && settings.background_type === 'video' && (
         <video className="absolute inset-0 h-full w-full object-cover" src={settings.background_video_url} autoPlay muted loop playsInline style={{ opacity: 1 - overlay }} />
       )}
       {settings.animated_logo_enabled && (
@@ -72,13 +80,13 @@ export function DynamicBackground({ settings, subtle = false }: { settings: Them
         </>
       )}
       {settings.particles_enabled &&
-        Array.from({ length: subtle ? 10 : 18 }).map((_, i) => (
-          <span key={i} className="absolute h-1 w-1 rounded-full" style={{ left: `${(i * 37) % 100}%`, top: `${(i * 19) % 100}%`, background: primary, opacity: subtle ? 0.14 : 0.25 }} />
+        Array.from({ length: Math.round((subtle ? 10 : 18) * intensity.particles) }).map((_, i) => (
+          <span key={i} className="girassol-particle absolute h-1 w-1 rounded-full" style={{ left: `${(i * 37) % 100}%`, top: `${(i * 19) % 100}%`, background: primary, opacity: subtle ? 0.14 : 0.25 }} />
         ))}
       {stageLightsEnabled && (
         <>
-          <div className="girassol-light absolute -top-32 left-1/4 h-96 w-96 rounded-full blur-3xl" style={{ background: `${primary}1f` }} />
-          <div className="girassol-light absolute -top-24 right-1/4 h-80 w-80 rounded-full blur-3xl" style={{ background: `${secondary}1f`, animationDelay: '-7s' }} />
+          <div className="girassol-light absolute -top-32 left-1/4 h-96 w-96 rounded-full blur-3xl" style={{ background: `${primary}1f`, animationDuration: `${18 / intensity.lights}s` }} />
+          <div className="girassol-light absolute -top-24 right-1/4 h-80 w-80 rounded-full blur-3xl" style={{ background: `${secondary}1f`, animationDelay: '-7s', animationDuration: `${20 / intensity.lights}s` }} />
         </>
       )}
       <div className="absolute inset-0 bg-black" style={{ opacity: overlay }} />
