@@ -21,32 +21,31 @@ type ManagedLogoProps = {
 function safeLogoUrl(value: unknown) {
   const url = isNonEmptyString(value) ? toSafeString(value).trim() : '';
   if (!url) return '';
+  if (url.startsWith('/')) return url;
 
   try {
-    if (url.startsWith('/')) return url;
     const parsed = new URL(url);
-    return parsed.protocol === 'http:' || parsed.protocol === 'https:' || parsed.protocol === 'data:' ? url : '';
+    return parsed.protocol === 'http:' || parsed.protocol === 'https:' ? url : '';
   } catch {
     return '';
   }
 }
 
-function withCacheBust(url: string, updatedAt?: string) {
-  if (!updatedAt || url.startsWith('data:') || url.startsWith('/')) return url;
-  try {
-    const parsed = new URL(url);
-    parsed.searchParams.set('v', updatedAt);
-    return parsed.toString();
-  } catch {
-    return url;
+function findCmsLogo(settings: Record<string, unknown>, settingKey?: string, fallbackKeys: string[] = []) {
+  const keys = [settingKey, ...fallbackKeys].filter(Boolean) as string[];
+
+  for (const key of keys) {
+    const url = safeLogoUrl(settings[key]);
+    if (url) return { key, url };
   }
+
+  return { key: '', url: '' };
 }
 
 export function ManagedLogo({
   settingKey,
   fallbackKeys = [],
   fallback,
-  src,
   alt,
   className,
   imageClassName,
@@ -55,41 +54,51 @@ export function ManagedLogo({
   children,
   debugLabel,
 }: ManagedLogoProps) {
-  const { settings, updatedAtMap } = useThemeSettings();
-  const keys = useMemo(() => [settingKey, ...fallbackKeys].filter(Boolean) as string[], [settingKey, fallbackKeys]);
-  const usedKey = keys.find((key) => safeLogoUrl(settings[key]));
-  const primaryUrl = settingKey ? safeLogoUrl(settings[settingKey]) : '';
-  const fallbackUrl = fallbackKeys.map((key) => safeLogoUrl(settings[key])).find(Boolean) ?? '';
-  const rawUrl = primaryUrl || fallbackUrl || safeLogoUrl(src);
-  const url = withCacheBust(rawUrl, usedKey ? updatedAtMap[usedKey] : undefined);
+  const { settings } = useThemeSettings();
+  const orderedFallbackKeys = useMemo(() => fallbackKeys, [fallbackKeys]);
+  const cmsLogo = findCmsLogo(settings, settingKey, orderedFallbackKeys);
   const [failedUrl, setFailedUrl] = useState('');
+  const hasCmsLogo = Boolean(cmsLogo.url) && failedUrl !== cmsLogo.url;
+  const mode = hasCmsLogo ? 'cms' : 'fallback';
 
   useEffect(() => {
     setFailedUrl('');
-  }, [url]);
-
-  const mode = !url || failedUrl === url ? 'fallback' : 'imagem real';
+  }, [cmsLogo.url]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
     window.dispatchEvent(
       new CustomEvent('theme-logo-debug', {
         detail: {
-          id: debugLabel ?? settingKey ?? 'direct-src',
-          key: settingKey ?? 'direct-src',
+          id: debugLabel ?? settingKey ?? 'managed-logo',
+          key: settingKey ?? '',
           mode,
-          usedKey: usedKey ?? '',
-          url: mode === 'imagem real' ? url : '',
+          usedKey: hasCmsLogo ? cmsLogo.key : '',
+          url: hasCmsLogo ? cmsLogo.url : '',
         },
       }),
     );
-  }, [debugLabel, settingKey, mode, usedKey, url]);
+  }, [cmsLogo.key, cmsLogo.url, debugLabel, hasCmsLogo, mode, settingKey]);
 
-  if (mode === 'fallback') return <span className={cn('inline-flex items-center', className)}>{fallback ?? children}</span>;
+  if (!hasCmsLogo) {
+    return (
+      <span className={cn('inline-flex items-center', className)} data-logo-key={settingKey ?? ''} data-logo-url="" data-logo-mode="fallback">
+        {fallback ?? children}
+      </span>
+    );
+  }
 
   return (
-    <span className={cn('inline-flex items-center', className)}>
-      <img src={url} alt={alt} width={width} height={height} className={cn('max-h-24 w-auto object-contain', imageClassName)} onError={() => setFailedUrl(url)} />
-    </span>
+    <img
+      src={cmsLogo.url}
+      alt={alt}
+      width={width}
+      height={height}
+      className={cn(className, 'object-contain', imageClassName)}
+      data-logo-key={cmsLogo.key}
+      data-logo-url={cmsLogo.url}
+      data-logo-mode="cms"
+      onError={() => setFailedUrl(cmsLogo.url)}
+    />
   );
 }
