@@ -91,11 +91,14 @@ export function SupabaseDiagnostics() {
     for (const item of updates) {
       const existing = (current.data ?? []).find((row) => row.field_key === item.field_key);
       const result = existing
-        ? await supabase.from('section_fields').update({ field_value: item.field_value }).eq('section_id', section.data.id).eq('field_key', item.field_key)
-        : await supabase.from('section_fields').insert({ section_id: section.data.id, field_key: item.field_key, field_label: item.field_key, field_type: 'text', field_value: item.field_value, order_index: item.field_key === 'title' ? 2 : 3 });
+        ? await supabase.from('section_fields').update({ field_value: item.field_value, field_json: null }).eq('section_id', section.data.id).eq('field_key', item.field_key)
+        : await supabase.from('section_fields').insert({ section_id: section.data.id, field_key: item.field_key, field_label: item.field_key, field_type: 'text', field_value: item.field_value, field_json: null, order_index: item.field_key === 'title' ? 2 : 3 });
       if (result.error) push(`Erro ao gravar ${item.field_key}: ${result.error.message}`);
     }
-    push('Teste de sincronização criado: abra / e confirme TESTE CMS HERO 123 e TESTE CMS SUBTITLE 123. Use Reverter teste CMS depois.');
+    const verify = await supabase.from('section_fields').select('field_key,field_value').eq('section_id', section.data.id).in('field_key', ['title', 'subtitle']);
+    const ok = !verify.error && (verify.data ?? []).some((row) => row.field_key === 'title' && row.field_value === 'TESTE CMS HERO 123') && (verify.data ?? []).some((row) => row.field_key === 'subtitle' && row.field_value === 'TESTE CMS SUBTITLE 123');
+    push(ok ? 'Confirmado por select: home_hero.title e home_hero.subtitle foram salvos.' : `Falha na confirmação por select: ${verify.error?.message || 'valores não encontrados'}.`);
+    push('Agora abra a homepage e actualize a página. Os textos devem aparecer sem novo deploy. Se não aparecerem, o Hero ainda não está a consumir CMS em runtime.');
     setLoading(false);
   }
 
