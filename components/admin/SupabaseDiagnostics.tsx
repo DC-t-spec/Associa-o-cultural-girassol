@@ -75,11 +75,51 @@ export function SupabaseDiagnostics() {
     setLoading(false);
   }
 
+
+  async function createCmsSyncTest() {
+    if (!supabase) return push('Erro no teste CMS: Supabase não configurado.');
+    setLoading(true);
+    const section = await supabase.from('page_sections').select('id').eq('section_key', 'home_hero').maybeSingle();
+    if (section.error || !section.data?.id) { push(`Erro: não encontrei page_sections.home_hero (${section.error?.message || 'sem id'}).`); setLoading(false); return; }
+    const current = await supabase.from('section_fields').select('field_key,field_value,field_json').eq('section_id', section.data.id).in('field_key', ['title', 'subtitle']);
+    if (current.error) { push(`Erro ao ler valores actuais do hero: ${current.error.message}`); setLoading(false); return; }
+    await supabase.from('theme_settings').upsert({ key: 'diagnostics_home_hero_backup', value: JSON.stringify(current.data ?? []) }, { onConflict: 'key' });
+    const updates = [
+      { field_key: 'title', field_value: 'TESTE CMS HERO 123' },
+      { field_key: 'subtitle', field_value: 'TESTE CMS SUBTITLE 123' },
+    ];
+    for (const item of updates) {
+      const existing = (current.data ?? []).find((row) => row.field_key === item.field_key);
+      const result = existing
+        ? await supabase.from('section_fields').update({ field_value: item.field_value }).eq('section_id', section.data.id).eq('field_key', item.field_key)
+        : await supabase.from('section_fields').insert({ section_id: section.data.id, field_key: item.field_key, field_label: item.field_key, field_type: 'text', field_value: item.field_value, order_index: item.field_key === 'title' ? 2 : 3 });
+      if (result.error) push(`Erro ao gravar ${item.field_key}: ${result.error.message}`);
+    }
+    push('Teste de sincronização criado: abra / e confirme TESTE CMS HERO 123 e TESTE CMS SUBTITLE 123. Use Reverter teste CMS depois.');
+    setLoading(false);
+  }
+
+  async function revertCmsSyncTest() {
+    if (!supabase) return push('Erro ao reverter: Supabase não configurado.');
+    setLoading(true);
+    const backup = await supabase.from('theme_settings').select('value').eq('key', 'diagnostics_home_hero_backup').maybeSingle();
+    const section = await supabase.from('page_sections').select('id').eq('section_key', 'home_hero').maybeSingle();
+    if (backup.error || section.error || !backup.data?.value || !section.data?.id) { push('Não há backup do teste CMS para reverter.'); setLoading(false); return; }
+    let rows: Array<{ field_key: string; field_value: string | null; field_json?: unknown }> = [];
+    try { rows = JSON.parse(backup.data.value); } catch { push('Backup do teste CMS inválido.'); }
+    for (const row of rows) {
+      const result = await supabase.from('section_fields').update({ field_value: row.field_value ?? '', field_json: row.field_json ?? null }).eq('section_id', section.data.id).eq('field_key', row.field_key);
+      if (result.error) push(`Erro ao reverter ${row.field_key}: ${result.error.message}`);
+    }
+    push('Teste CMS revertido para os valores anteriores guardados no diagnóstico.');
+    setLoading(false);
+  }
+
   async function testPublicLogos() {
     const current = await testThemeRead();
     logoKeys.forEach((key) => push(current[key] ? `${key} lido pelo site público como key oficial.` : `${key} está vazio.`));
     push('Se o debug público mostrar outra key, o site está a ler a key errada.');
   }
 
-  return <section id="Diagnóstico" className="mt-10 rounded-3xl border border-white/10 bg-zinc-950 p-5"><h2 className="font-display text-3xl text-sun">Diagnóstico</h2><p className="mt-2 text-zinc-300">Testes reais CMS → theme_settings → media_assets → Storage. Os erros abaixo são mensagens devolvidas pelo Supabase.</p><div className="mt-4 flex flex-wrap gap-2"><button disabled={loading} onClick={testConnection} className="rounded-full bg-sun px-4 py-2 font-bold text-black">Testar ligação Supabase</button><button onClick={testThemeRead} className="rounded-full border border-white/10 px-4 py-2">Testar leitura theme_settings</button><button onClick={testThemeWrite} className="rounded-full border border-white/10 px-4 py-2">Testar gravação theme_settings</button><button onClick={testThemeRead} className="rounded-full border border-white/10 px-4 py-2">Recarregar valores</button><button onClick={testPublicLogos} className="rounded-full border border-white/10 px-4 py-2">Testar leitura pública dos logotipos</button><button onClick={testStorageUpload} className="rounded-full border border-white/10 px-4 py-2">Testar upload site-media</button></div><div className="mt-5 grid gap-4 lg:grid-cols-2"><div className="space-y-2">{checks.map((check) => <div key={check.label} className="rounded-2xl border border-white/10 bg-black/30 p-3"><b className="text-white">{check.label} {status(check.ok)}</b><p className="text-sm text-zinc-400">{check.detail}</p></div>)}</div><div className="rounded-2xl border border-white/10 bg-black/30 p-3"><h3 className="font-bold text-white">Últimos valores guardados</h3>{logoKeys.map((key) => <p key={key} className="mt-2 break-all text-sm"><span className="text-sun">{key}</span>: <span className="text-zinc-300">{values[key] || 'vazio'}</span></p>)}<h3 className="mt-5 font-bold text-white">Erros e notas</h3>{log.length ? log.map((item, index) => <p key={`${item}-${index}`} className="mt-2 text-sm text-zinc-300">{item}</p>) : <p className="mt-2 text-sm text-zinc-500">Sem testes executados.</p>}</div></div></section>;
+  return <section id="Diagnóstico" className="mt-10 rounded-3xl border border-white/10 bg-zinc-950 p-5"><h2 className="font-display text-3xl text-sun">Diagnóstico</h2><p className="mt-2 text-zinc-300">Testes reais CMS → theme_settings → media_assets → Storage. Os erros abaixo são mensagens devolvidas pelo Supabase.</p><div className="mt-4 flex flex-wrap gap-2"><button disabled={loading} onClick={testConnection} className="rounded-full bg-sun px-4 py-2 font-bold text-black">Testar ligação Supabase</button><button onClick={testThemeRead} className="rounded-full border border-white/10 px-4 py-2">Testar leitura theme_settings</button><button onClick={testThemeWrite} className="rounded-full border border-white/10 px-4 py-2">Testar gravação theme_settings</button><button onClick={testThemeRead} className="rounded-full border border-white/10 px-4 py-2">Recarregar valores</button><button onClick={testPublicLogos} className="rounded-full border border-white/10 px-4 py-2">Testar leitura pública dos logotipos</button><button onClick={testStorageUpload} className="rounded-full border border-white/10 px-4 py-2">Testar upload site-media</button><button onClick={createCmsSyncTest} className="rounded-full bg-emerald-400 px-4 py-2 font-bold text-black">Criar teste de sincronização CMS</button><button onClick={revertCmsSyncTest} className="rounded-full border border-red-300/40 px-4 py-2 text-red-200">Reverter teste CMS</button></div><div className="mt-5 grid gap-4 lg:grid-cols-2"><div className="space-y-2">{checks.map((check) => <div key={check.label} className="rounded-2xl border border-white/10 bg-black/30 p-3"><b className="text-white">{check.label} {status(check.ok)}</b><p className="text-sm text-zinc-400">{check.detail}</p></div>)}</div><div className="rounded-2xl border border-white/10 bg-black/30 p-3"><h3 className="font-bold text-white">Últimos valores guardados</h3>{logoKeys.map((key) => <p key={key} className="mt-2 break-all text-sm"><span className="text-sun">{key}</span>: <span className="text-zinc-300">{values[key] || 'vazio'}</span></p>)}<h3 className="mt-5 font-bold text-white">Erros e notas</h3>{log.length ? log.map((item, index) => <p key={`${item}-${index}`} className="mt-2 text-sm text-zinc-300">{item}</p>) : <p className="mt-2 text-sm text-zinc-500">Sem testes executados.</p>}</div></div></section>;
 }
