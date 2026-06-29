@@ -15,6 +15,7 @@ type ManagedLogoProps = {
   width?: number;
   height?: number;
   children?: ReactNode;
+  debugLabel?: string;
 };
 
 function safeLogoUrl(value: unknown) {
@@ -32,15 +33,34 @@ function safeLogoUrl(value: unknown) {
 
 function withCacheBust(url: string, updatedAt?: string) {
   if (!updatedAt || url.startsWith('data:') || url.startsWith('/')) return url;
-  try { const parsed = new URL(url); parsed.searchParams.set('v', updatedAt); return parsed.toString(); } catch { return url; }
+  try {
+    const parsed = new URL(url);
+    parsed.searchParams.set('v', updatedAt);
+    return parsed.toString();
+  } catch {
+    return url;
+  }
 }
 
-export function ManagedLogo({ settingKey, fallbackKeys = [], fallback, src, alt, className, imageClassName, width, height, children }: ManagedLogoProps) {
+export function ManagedLogo({
+  settingKey,
+  fallbackKeys = [],
+  fallback,
+  src,
+  alt,
+  className,
+  imageClassName,
+  width,
+  height,
+  children,
+  debugLabel,
+}: ManagedLogoProps) {
   const { settings, updatedAtMap } = useThemeSettings();
   const keys = useMemo(() => [settingKey, ...fallbackKeys].filter(Boolean) as string[], [settingKey, fallbackKeys]);
   const usedKey = keys.find((key) => safeLogoUrl(settings[key]));
-  const resolvedSrc = usedKey ? settings[usedKey] : src;
-  const rawUrl = safeLogoUrl(resolvedSrc);
+  const primaryUrl = settingKey ? safeLogoUrl(settings[settingKey]) : '';
+  const fallbackUrl = fallbackKeys.map((key) => safeLogoUrl(settings[key])).find(Boolean) ?? '';
+  const rawUrl = primaryUrl || fallbackUrl || safeLogoUrl(src);
   const url = withCacheBust(rawUrl, usedKey ? updatedAtMap[usedKey] : undefined);
   const [failedUrl, setFailedUrl] = useState('');
 
@@ -52,10 +72,20 @@ export function ManagedLogo({ settingKey, fallbackKeys = [], fallback, src, alt,
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
-    window.dispatchEvent(new CustomEvent('theme-logo-debug', { detail: { key: settingKey ?? 'direct-src', mode, usedKey: usedKey ?? '', url: mode === 'imagem real' ? url : '' } }));
-  }, [settingKey, mode, usedKey, url]);
+    window.dispatchEvent(
+      new CustomEvent('theme-logo-debug', {
+        detail: {
+          id: debugLabel ?? settingKey ?? 'direct-src',
+          key: settingKey ?? 'direct-src',
+          mode,
+          usedKey: usedKey ?? '',
+          url: mode === 'imagem real' ? url : '',
+        },
+      }),
+    );
+  }, [debugLabel, settingKey, mode, usedKey, url]);
 
-  if (mode === 'fallback') return <>{fallback ?? children}</>;
+  if (mode === 'fallback') return <span className={cn('inline-flex items-center', className)}>{fallback ?? children}</span>;
 
   return (
     <span className={cn('inline-flex items-center', className)}>

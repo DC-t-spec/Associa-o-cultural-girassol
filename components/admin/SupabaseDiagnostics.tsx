@@ -66,8 +66,9 @@ export function SupabaseDiagnostics() {
   async function testStorageUpload() {
     if (!supabase) return push('Erro no upload: Supabase não configurado.');
     setLoading(true);
-    const path = `diagnostics/${Date.now()}-${crypto.randomUUID()}.txt`;
-    const upload = await supabase.storage.from('site-media').upload(path, new Blob(['diagnostico'], { type: 'text/plain' }), { upsert: false, contentType: 'text/plain' });
+    const path = `diagnostics/${Date.now()}-${crypto.randomUUID()}.png`;
+    const pngBytes = new Uint8Array([137,80,78,71,13,10,26,10,0,0,0,13,73,72,68,82,0,0,0,1,0,0,0,1,8,6,0,0,0,31,21,196,137,0,0,0,13,73,68,65,84,120,156,99,248,255,255,255,127,0,9,251,3,253,5,67,69,202,0,0,0,0,73,69,78,68,174,66,96,130]);
+    const upload = await supabase.storage.from('site-media').upload(path, new Blob([pngBytes], { type: 'image/png' }), { upsert: false, contentType: 'image/png' });
     setCheck('Consegue fazer upload no bucket site-media?', !upload.error, upload.error ? `Erro ao fazer upload site-media: ${upload.error.message}` : `Upload OK: ${path}`);
     if (!upload.error) await supabase.storage.from('site-media').remove([path]);
     push(upload.error ? `Erro ao fazer upload site-media: ${upload.error.message}` : 'Upload site-media OK.');
