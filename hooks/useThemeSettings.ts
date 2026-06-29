@@ -19,7 +19,9 @@ const numberKeys = new Set(['animated_logo_opacity', 'animated_logo_speed', 'ove
 
 function coerceSettingValue(row: ThemeSettingRow): unknown {
   const key = toSafeString(row.key).trim();
-  const raw = row.value !== null && row.value !== undefined && toSafeString(row.value).trim() !== '' ? row.value : row.value_json;
+  const hasValue = row.value !== null && row.value !== undefined && toSafeString(row.value).trim() !== '';
+  const jsonIsEmptyObject = row.value_json !== null && typeof row.value_json === 'object' && !Array.isArray(row.value_json) && Object.keys(row.value_json as Record<string, unknown>).length === 0;
+  const raw = hasValue ? row.value : jsonIsEmptyObject || row.value_json === null || row.value_json === undefined ? undefined : row.value_json;
 
   if (booleanKeys.has(key)) {
     if (typeof raw === 'boolean') return raw;

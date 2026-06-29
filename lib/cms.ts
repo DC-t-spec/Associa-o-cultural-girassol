@@ -5,10 +5,10 @@ import { toSafeString } from '@/lib/utils';
 
 const empty = 'Conteúdo em actualização. Em breve serão publicadas novas informações.';
 const SUPABASE_READ_TIMEOUT_MS = 5000;
-const getBrowserSupabase = () => (typeof window !== 'undefined' && isSupabaseConfigured ? supabase : null);
+const getPublicSupabase = () => (isSupabaseConfigured ? supabase : null);
 
 async function withFallback<T>(request: PromiseLike<{ data: T | null; error: unknown }>, fallback: T): Promise<T> {
-  if (!getBrowserSupabase()) return fallback;
+  if (!getPublicSupabase()) return fallback;
 
   let timeout: ReturnType<typeof setTimeout> | undefined;
   try {
@@ -37,21 +37,21 @@ export function getFallbackTheme(): ThemeSettings {
 
 export async function getPage(slug: string): Promise<Page> {
   const fallback = getFallbackPage(slug);
-  const db = getBrowserSupabase();
+  const db = getPublicSupabase();
   if (!db) return fallback;
   return withFallback<Page>(db.from('pages').select('*').eq('slug', slug).maybeSingle(), fallback);
 }
 
 export async function getPageSections(slug: string): Promise<PageSection[]> {
   const fallback = cmsFallbackSections.filter((s) => s.page_slug === slug && s.is_active).sort((a, b) => a.order_index - b.order_index);
-  const db = getBrowserSupabase();
+  const db = getPublicSupabase();
   if (!db) return fallback;
   return withFallback<PageSection[]>(db.from('page_sections').select('*').eq('page_slug', slug).eq('is_active', true).order('order_index'), fallback);
 }
 
 export async function getSectionFields(sectionKey: string): Promise<SectionField[]> {
   const fallback = cmsFallbackFields[sectionKey] ?? [{ id: `${sectionKey}-empty`, section_id: sectionKey, field_key: 'empty_state_text', field_label: 'Mensagem padrão', field_type: 'textarea', field_value: empty, order_index: 1 } satisfies SectionField];
-  const db = getBrowserSupabase();
+  const db = getPublicSupabase();
   if (!db) return fallback;
 
   const section = await withFallback<{ id: string }>(db.from('page_sections').select('id').eq('section_key', sectionKey).maybeSingle(), { id: '' });
@@ -72,27 +72,37 @@ function normaliseThemeValue(value: unknown, fallback: unknown) {
 }
 
 export async function getThemeSettings(): Promise<ThemeSettings> {
-  const db = getBrowserSupabase();
+  const db = getPublicSupabase();
   if (!db) return getFallbackTheme();
 
   const data = await withFallback<Array<{ key: string; value: string | null; value_json: unknown }>>(db.from('theme_settings').select('key,value,value_json'), []);
   if (!data.length) return getFallbackTheme();
 
   return data.reduce((acc, row) => {
-    const raw = row.value !== null && row.value !== undefined && row.value !== '' ? row.value : row.value_json;
+    const hasValue = row.value !== null && row.value !== undefined && row.value !== '';
+    const jsonIsUsable = row.value_json !== null && row.value_json !== undefined && !(typeof row.value_json === 'object' && !Array.isArray(row.value_json) && Object.keys(row.value_json as Record<string, unknown>).length === 0);
+    const raw = hasValue ? row.value : jsonIsUsable ? row.value_json : acc[row.key as keyof ThemeSettings];
     return { ...acc, [row.key]: normaliseThemeValue(raw, acc[row.key as keyof ThemeSettings]) };
   }, getFallbackTheme());
 }
 
 export async function getNavigation(location: NavigationItem['location']): Promise<NavigationItem[]> {
   const fallback = cmsFallbackNavigation.filter((n) => n.location === location && n.is_active).sort((a, b) => a.order_index - b.order_index);
-  const db = getBrowserSupabase();
+  const db = getPublicSupabase();
   if (!db) return fallback;
-  return withFallback<NavigationItem[]>(db.from('navigation_items').select('*').eq('location', location).eq('is_active', true).order('order_index'), fallback);
+  const rows = await withFallback<NavigationItem[]>(db.from('navigation_items').select('*').eq('location', location).eq('is_active', true).order('order_index'), fallback);
+  const source = rows.length ? rows : fallback;
+  const seen = new Set<string>();
+  return source.filter((item) => {
+    const key = `${toSafeString(item.label).trim().toLowerCase()}|${toSafeString(item.url).trim().toLowerCase()}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
 }
 
 export async function getMediaAssets(): Promise<MediaAsset[]> {
-  const db = getBrowserSupabase();
+  const db = getPublicSupabase();
   if (!db) return cmsFallbackMedia;
   return withFallback<MediaAsset[]>(db.from('media_assets').select('*').order('created_at', { ascending: false }), cmsFallbackMedia);
 }
