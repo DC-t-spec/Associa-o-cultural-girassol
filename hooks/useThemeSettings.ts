@@ -19,7 +19,7 @@ const numberKeys = new Set(['animated_logo_opacity', 'animated_logo_speed', 'ove
 
 function coerceSettingValue(row: ThemeSettingRow): unknown {
   const key = toSafeString(row.key).trim();
-  const raw = row.value_json !== null && row.value_json !== undefined ? row.value_json : row.value;
+  const raw = row.value !== null && row.value !== undefined && toSafeString(row.value).trim() !== '' ? row.value : row.value_json;
 
   if (booleanKeys.has(key)) {
     if (typeof raw === 'boolean') return raw;

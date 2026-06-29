@@ -7,6 +7,8 @@ import { Button } from '@/components/ui/Button';
 import { FormInput } from '@/components/ui/FormInput';
 import { SectionTitle } from '@/components/ui/SectionTitle';
 import { supabase } from '@/lib/supabase';
+import { useThemeSettings } from '@/hooks/useThemeSettings';
+import { text } from '@/components/publicCms';
 
 type Form = {
   name: string;
@@ -19,10 +21,14 @@ type Form = {
 export function Contact() {
   const { register, handleSubmit, reset } = useForm<Form>();
   const [ok, setOk] = useState(false);
+  const [error, setError] = useState('');
+  const { settings } = useThemeSettings();
 
   async function onSubmit(data: Form) {
+    setError('');
     if (supabase) {
-      await supabase.from('contact_messages').insert(data);
+      const result = await supabase.from('contact_messages').insert(data);
+      if (result.error) { setError('Não foi possível registar a mensagem. Tente novamente ou use os contactos rápidos.'); return; }
     }
 
     setOk(true);
@@ -40,6 +46,7 @@ export function Contact() {
             <FormInput label="Telefone" registration={register('phone')} />
             <FormInput label="Assunto" registration={register('subject', { required: true })} />
             <FormInput label="Mensagem" textarea registration={register('message', { required: true })} />
+            {error && <p className="text-red-300">{error}</p>}
             {ok && (
               <p className="text-sun">
                 Mensagem registada com sucesso. Se não receber resposta breve, contacte-nos também por WhatsApp ou email.
@@ -50,11 +57,11 @@ export function Contact() {
           <div className="rounded-3xl border border-white/10 bg-black/40 p-6">
             <h3 className="text-2xl font-bold text-white">Canais rápidos</h3>
             <div className="mt-6 grid gap-4 text-zinc-300">
-              <a className="flex gap-3" href="https://wa.me/?text=Olá%20Associação%20Cultural%20Girassol"><MessageCircle className="text-sun" /> WhatsApp</a>
-              <a className="flex gap-3" href="mailto:"><Mail className="text-sun" /> Email a configurar</a>
-              <span className="flex gap-3"><Instagram className="text-sun" /> Instagram a configurar</span>
-              <span className="flex gap-3"><Facebook className="text-sun" /> Facebook a configurar</span>
-              <span className="flex gap-3"><MapPin className="text-sun" /> Localização a configurar</span>
+              <a className="flex gap-3" href={text(settings.whatsapp_url, text(settings.whatsapp, 'https://wa.me/?text=Olá%20Associação%20Cultural%20Girassol'))}><MessageCircle className="text-sun" /> WhatsApp</a>
+              <a className="flex gap-3" href={`mailto:${text(settings.contact_email,'')}`}><Mail className="text-sun" /> {text(settings.contact_email,'Email a configurar')}</a>
+              <span className="flex gap-3"><Instagram className="text-sun" /> {text(settings.instagram_label,'Instagram a configurar')}</span>
+              <span className="flex gap-3"><Facebook className="text-sun" /> {text(settings.facebook_label,'Facebook a configurar')}</span>
+              <span className="flex gap-3"><MapPin className="text-sun" /> {text(settings.contact_location,'Localização a configurar')}</span>
             </div>
           </div>
         </div>

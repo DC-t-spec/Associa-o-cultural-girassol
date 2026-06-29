@@ -28,10 +28,13 @@ type App = {
 export function FitiForms() {
   const { register, handleSubmit, reset } = useForm<App>({ defaultValues: { type: 'company' } });
   const [ok, setOk] = useState(false);
+  const [error, setError] = useState('');
 
   async function submit(data: App) {
+    setError('');
     if (supabase) {
-      await supabase.from('fiti_applications').insert(data);
+      const result = await supabase.from('fiti_applications').insert(data);
+      if (result.error) { setError('Não foi possível registar o pedido. Tente novamente ou contacte a organização.'); return; }
     }
 
     setOk(true);
@@ -58,6 +61,7 @@ export function FitiForms() {
           <div className="md:col-span-2"><FormInput label="Sinopse" textarea registration={register('synopsis')} /></div>
           <div className="md:col-span-2"><FormInput label="Necessidades técnicas" textarea registration={register('technical_needs')} /></div>
           <div className="md:col-span-2"><FormInput label="Observações" textarea registration={register('notes')} /></div>
+          {error && <p className="text-red-300 md:col-span-2">{error}</p>}
           {ok && <p className="text-sun md:col-span-2">Pedido registado com sucesso. Se necessário, confirme também por WhatsApp ou email.</p>}
           <Button type="submit" className="md:col-span-2">Enviar</Button>
         </form>

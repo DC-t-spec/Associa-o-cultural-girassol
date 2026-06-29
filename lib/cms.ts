@@ -79,7 +79,7 @@ export async function getThemeSettings(): Promise<ThemeSettings> {
   if (!data.length) return getFallbackTheme();
 
   return data.reduce((acc, row) => {
-    const raw = row.value_json ?? row.value;
+    const raw = row.value !== null && row.value !== undefined && row.value !== '' ? row.value : row.value_json;
     return { ...acc, [row.key]: normaliseThemeValue(raw, acc[row.key as keyof ThemeSettings]) };
   }, getFallbackTheme());
 }
