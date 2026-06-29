@@ -29,11 +29,11 @@ export function DynamicBackground({ settings, subtle = false }: { settings: Them
   const stageLightsEnabled = settings.stage_lights_enabled === true;
   const backgroundType = toSafeString(settings.background_type, 'mixed').trim() || 'mixed';
   const useGradient = backgroundType !== 'none';
-  const logoUrl = isNonEmptyString(settings.animated_logo_url) ? settings.animated_logo_url.trim() : '';
+  const logoUrl = isNonEmptyString(settings.animated_logo_url) ? toSafeString(settings.animated_logo_url).trim() : '';
   const gradientFrom = toSafeString(settings.gradient_from, primary).trim() || primary;
   const gradientTo = toSafeString(settings.gradient_to, background).trim() || background;
-  const backgroundImageUrl = isNonEmptyString(settings.background_image_url) ? settings.background_image_url.trim() : '';
-  const backgroundVideoUrl = isNonEmptyString(settings.background_video_url) ? settings.background_video_url.trim() : '';
+  const backgroundImageUrl = isNonEmptyString(settings.background_image_url) ? toSafeString(settings.background_image_url).trim() : '';
+  const backgroundVideoUrl = isNonEmptyString(settings.background_video_url) ? toSafeString(settings.background_video_url).trim() : '';
 
   return (
     <div

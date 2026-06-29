@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { cn, isNonEmptyString } from '@/lib/utils';
+import { cn, isNonEmptyString, toSafeString } from '@/lib/utils';
 
 type ManagedLogoProps = {
   src?: unknown;
@@ -13,7 +13,7 @@ type ManagedLogoProps = {
 
 export function ManagedLogo({ src, alt, className, imageClassName, children }: ManagedLogoProps) {
   const [failed, setFailed] = useState(false);
-  const url = isNonEmptyString(src) ? src.trim() : '';
+  const url = isNonEmptyString(src) ? toSafeString(src).trim() : '';
 
   if (!url || failed) return <>{children}</>;
 

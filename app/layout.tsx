@@ -1,17 +1,9 @@
-import type { Metadata } from 'next';
 import './globals.css';
 
-export const metadata: Metadata = {
-  metadataBase: new URL('https://girassol-site.vercel.app'),
+export const metadata = {
   title: 'Associação Cultural Girassol | Teatro, Cultura e Juventude em Moçambique',
   description:
     'Site oficial da Associação Cultural Girassol, organização cultural moçambicana dedicada ao teatro, formação artística, intercâmbio cultural, acção social e ao FITI – Festival Internacional Teatro de Inverno.',
-  openGraph: {
-    title: 'Associação Cultural Girassol',
-    description: 'Teatro, juventude, memória e transformação cultural em Moçambique.',
-    type: 'website',
-  },
-  twitter: { card: 'summary_large_image' },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
