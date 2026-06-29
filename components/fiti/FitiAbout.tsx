@@ -1,2 +1,3 @@
-import { fitiAbout, mandatoryFitiPhrase } from '@/lib/data'; import { SectionTitle } from '@/components/ui/SectionTitle';
-export function FitiAbout(){return <section id="sobre" className="py-24"><div className="mx-auto max-w-4xl px-4"><SectionTitle eyebrow="Sobre o FITI" title="Festival, encontro e circulação"/><div className="space-y-5 text-lg leading-8 text-zinc-300">{fitiAbout.map(p=><p key={p}>{p}</p>)}<p className="font-semibold text-sun">{mandatoryFitiPhrase}</p></div></div></section>}
+'use client';
+import { mandatoryFitiPhrase } from '@/lib/data'; import { SectionTitle } from '@/components/ui/SectionTitle'; import { useSection, text } from '@/components/publicCms';
+export function FitiAbout(){const f=useSection('fiti_about');return <section id="sobre" className="py-24"><div className="mx-auto max-w-4xl px-4"><SectionTitle eyebrow={text(f.eyebrow,'Sobre o FITI')} title={text(f.section_title,'Festival, encontro e circulação')}/><div className="space-y-5 text-lg leading-8 text-zinc-300">{text(f.section_text).split('\n').filter(Boolean).map(p=><p key={p}>{p}</p>)}<p className="font-semibold text-sun">{mandatoryFitiPhrase}</p></div></div></section>}
