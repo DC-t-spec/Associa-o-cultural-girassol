@@ -6,6 +6,7 @@ import { toSafeString } from '@/lib/utils';
 
 const logoKeys = ['site_logo_url','hero_logo_url','footer_logo_url','fiti_logo_url','animated_logo_url'] as const;
 type Check = { label: string; ok: boolean | null; detail: string };
+type CmsBackupRow = { field_key: string; field_value: string | null; field_json?: unknown };
 
 function status(ok: boolean | null) { return ok === null ? '—' : ok ? 'sim' : 'não'; }
 function errorMessage(error: unknown) { return error instanceof Error ? error.message : toSafeString(error) || 'Erro desconhecido.'; }
@@ -15,6 +16,7 @@ export function SupabaseDiagnostics() {
   const [values, setValues] = useState<Record<string, string>>({});
   const [log, setLog] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
+  const [cmsBackup, setCmsBackup] = useState<CmsBackupRow[] | null>(null);
 
   function push(message: string) { setLog((current) => [message, ...current].slice(0, 12)); }
   function setCheck(label: string, ok: boolean | null, detail: string) { setChecks((current) => [...current.filter((item) => item.label !== label), { label, ok, detail }]); }
@@ -79,39 +81,34 @@ export function SupabaseDiagnostics() {
   async function createCmsSyncTest() {
     if (!supabase) return push('Erro no teste CMS: Supabase não configurado.');
     setLoading(true);
-    const section = await supabase.from('page_sections').select('id').eq('section_key', 'home_hero').maybeSingle();
+    const section = await supabase.from('page_sections').select('id,page_slug,section_key').eq('page_slug', 'home').eq('section_key', 'home_hero').maybeSingle();
     if (section.error || !section.data?.id) { push(`Erro: não encontrei page_sections.home_hero (${section.error?.message || 'sem id'}).`); setLoading(false); return; }
     const current = await supabase.from('section_fields').select('field_key,field_value,field_json').eq('section_id', section.data.id).in('field_key', ['title', 'subtitle']);
     if (current.error) { push(`Erro ao ler valores actuais do hero: ${current.error.message}`); setLoading(false); return; }
-    await supabase.from('theme_settings').upsert({ key: 'diagnostics_home_hero_backup', value: JSON.stringify(current.data ?? []) }, { onConflict: 'key' });
+    setCmsBackup((current.data ?? []) as CmsBackupRow[]);
     const updates = [
-      { field_key: 'title', field_value: 'TESTE CMS HERO 123' },
-      { field_key: 'subtitle', field_value: 'TESTE CMS SUBTITLE 123' },
+      { section_id: section.data.id, field_key: 'title', field_label: 'Título', field_type: 'text', field_value: 'TESTE CMS HERO 123', field_json: {}, order_index: 1 },
+      { section_id: section.data.id, field_key: 'subtitle', field_label: 'Subtítulo', field_type: 'text', field_value: 'TESTE CMS SUBTITLE 123', field_json: {}, order_index: 2 },
     ];
-    for (const item of updates) {
-      const existing = (current.data ?? []).find((row) => row.field_key === item.field_key);
-      const result = existing
-        ? await supabase.from('section_fields').update({ field_value: item.field_value, field_json: null }).eq('section_id', section.data.id).eq('field_key', item.field_key)
-        : await supabase.from('section_fields').insert({ section_id: section.data.id, field_key: item.field_key, field_label: item.field_key, field_type: 'text', field_value: item.field_value, field_json: null, order_index: item.field_key === 'title' ? 2 : 3 });
-      if (result.error) push(`Erro ao gravar ${item.field_key}: ${result.error.message}`);
-    }
-    const verify = await supabase.from('section_fields').select('field_key,field_value').eq('section_id', section.data.id).in('field_key', ['title', 'subtitle']);
-    const ok = !verify.error && (verify.data ?? []).some((row) => row.field_key === 'title' && row.field_value === 'TESTE CMS HERO 123') && (verify.data ?? []).some((row) => row.field_key === 'subtitle' && row.field_value === 'TESTE CMS SUBTITLE 123');
-    push(ok ? 'Confirmado por select: home_hero.title e home_hero.subtitle foram salvos.' : `Falha na confirmação por select: ${verify.error?.message || 'valores não encontrados'}.`);
-    push('Agora abra a homepage e actualize a página. Os textos devem aparecer sem novo deploy. Se não aparecerem, o Hero ainda não está a consumir CMS em runtime.');
+    const write = await supabase.from('section_fields').upsert(updates, { onConflict: 'section_id,field_key' });
+    if (write.error) push(`Erro ao gravar teste CMS em section_fields: ${write.error.message}`);
+    const verify = await supabase.from('section_fields').select('section_id,field_key,field_value,updated_at').eq('section_id', section.data.id).in('field_key', ['title', 'subtitle']).order('field_key');
+    const ok = !write.error && !verify.error && (verify.data ?? []).some((row) => row.field_key === 'title' && row.field_value === 'TESTE CMS HERO 123') && (verify.data ?? []).some((row) => row.field_key === 'subtitle' && row.field_value === 'TESTE CMS SUBTITLE 123');
+    if (verify.error) push(`Erro na confirmação por select: ${verify.error.message}`);
+    (verify.data ?? []).forEach((row) => push(`Confirmado: section_id=${row.section_id} · field_key=${row.field_key} · valor=${row.field_value} · updated_at=${row.updated_at}`));
+    push(ok ? 'Confirmado por select: home_hero.title e home_hero.subtitle foram salvos em public.section_fields.' : 'Falha na confirmação por select: valores esperados não encontrados.');
+    push('Agora abra a homepage e faça Ctrl+F5. Os textos devem aparecer sem novo redeploy se a página estiver a consumir o CMS em runtime.');
     setLoading(false);
   }
 
   async function revertCmsSyncTest() {
     if (!supabase) return push('Erro ao reverter: Supabase não configurado.');
     setLoading(true);
-    const backup = await supabase.from('theme_settings').select('value').eq('key', 'diagnostics_home_hero_backup').maybeSingle();
-    const section = await supabase.from('page_sections').select('id').eq('section_key', 'home_hero').maybeSingle();
-    if (backup.error || section.error || !backup.data?.value || !section.data?.id) { push('Não há backup do teste CMS para reverter.'); setLoading(false); return; }
-    let rows: Array<{ field_key: string; field_value: string | null; field_json?: unknown }> = [];
-    try { rows = JSON.parse(backup.data.value); } catch { push('Backup do teste CMS inválido.'); }
+    const section = await supabase.from('page_sections').select('id,page_slug,section_key').eq('page_slug', 'home').eq('section_key', 'home_hero').maybeSingle();
+    if (section.error || !section.data?.id || !cmsBackup?.length) { push('Não há backup do teste CMS para reverter nesta sessão.'); setLoading(false); return; }
+    const rows = cmsBackup;
     for (const row of rows) {
-      const result = await supabase.from('section_fields').update({ field_value: row.field_value ?? '', field_json: row.field_json ?? null }).eq('section_id', section.data.id).eq('field_key', row.field_key);
+      const result = await supabase.from('section_fields').upsert({ section_id: section.data.id, field_key: row.field_key, field_label: row.field_key, field_type: 'text', field_value: row.field_value ?? '', field_json: row.field_json ?? {}, order_index: row.field_key === 'title' ? 1 : 2 }, { onConflict: 'section_id,field_key' });
       if (result.error) push(`Erro ao reverter ${row.field_key}: ${result.error.message}`);
     }
     push('Teste CMS revertido para os valores anteriores guardados no diagnóstico.');
