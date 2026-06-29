@@ -1,9 +1,21 @@
+'use client';
+
 import type { ThemeSettings } from '@/types/cms';
+import { useThemeSettings } from '@/hooks/useThemeSettings';
 import { isNonEmptyString, toSafeString } from '@/lib/utils';
 
 function toNumber(value: unknown, fallback: number) {
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : fallback;
+}
+
+function toBoolean(value: unknown, fallback = false) {
+  if (typeof value === 'boolean') return value;
+  if (typeof value === 'number') return value === 1;
+  const parsed = toSafeString(value).trim().toLowerCase();
+  if (['true', '1', 'yes', 'sim'].includes(parsed)) return true;
+  if (['false', '0', 'no', 'não', 'nao'].includes(parsed)) return false;
+  return fallback;
 }
 
 const motionScale: Record<string, { drift: number; particles: number; lights: number }> = {
@@ -12,10 +24,11 @@ const motionScale: Record<string, { drift: number; particles: number; lights: nu
   high: { drift: 1.35, particles: 1.25, lights: 1.25 },
 };
 
-export function DynamicBackground({ settings, subtle = false }: { settings: ThemeSettings; subtle?: boolean }) {
+export function DynamicBackground({ settings: initialSettings, subtle = false }: { settings: ThemeSettings; subtle?: boolean }) {
+  const { settings } = useThemeSettings(initialSettings);
   const background = toSafeString(settings.background_color, '#050505').trim() || '#050505';
 
-  if (!settings.animated_background_enabled) {
+  if (!toBoolean(settings.animated_background_enabled, true)) {
     return <div aria-hidden className="pointer-events-none fixed inset-0 z-0" style={{ background }} />;
   }
 
@@ -26,7 +39,7 @@ export function DynamicBackground({ settings, subtle = false }: { settings: Them
   const speed = Math.max(18, toNumber(settings.animated_logo_speed, 42) / intensity.drift);
   const primary = toSafeString(settings.primary_color, '#F7B500').trim() || '#F7B500';
   const secondary = toSafeString(settings.accent_color, toSafeString(settings.secondary_color, '#F97316')).trim() || '#F97316';
-  const stageLightsEnabled = settings.stage_lights_enabled === true;
+  const stageLightsEnabled = toBoolean(settings.stage_lights_enabled, false);
   const backgroundType = toSafeString(settings.background_type, 'mixed').trim() || 'mixed';
   const useGradient = backgroundType !== 'none';
   const logoUrl = isNonEmptyString(settings.animated_logo_url) ? toSafeString(settings.animated_logo_url).trim() : '';
@@ -51,7 +64,7 @@ export function DynamicBackground({ settings, subtle = false }: { settings: Them
       {backgroundVideoUrl && backgroundType === 'video' && (
         <video className="absolute inset-0 h-full w-full object-cover" src={backgroundVideoUrl} autoPlay muted loop playsInline style={{ opacity: 1 - overlay }} />
       )}
-      {settings.animated_logo_enabled && (
+      {toBoolean(settings.animated_logo_enabled, true) && (
         <>
           {[0, 1, 2].map((i) => (
             <div
@@ -86,7 +99,7 @@ export function DynamicBackground({ settings, subtle = false }: { settings: Them
           ))}
         </>
       )}
-      {settings.particles_enabled &&
+      {toBoolean(settings.particles_enabled, true) &&
         Array.from({ length: Math.round((subtle ? 10 : 18) * intensity.particles) }).map((_, i) => (
           <span key={i} className="girassol-particle absolute h-1 w-1 rounded-full" style={{ left: `${(i * 37) % 100}%`, top: `${(i * 19) % 100}%`, background: primary, opacity: subtle ? 0.14 : 0.25 }} />
         ))}
