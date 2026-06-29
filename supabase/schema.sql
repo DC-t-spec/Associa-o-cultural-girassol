@@ -2,7 +2,7 @@ create extension if not exists pgcrypto;
 
 create or replace function public.update_updated_at() returns trigger language plpgsql as $$ begin new.updated_at = now(); return new; end; $$;
 create table if not exists admin_profiles (id uuid primary key references auth.users(id) on delete cascade, email text, full_name text, role text default 'admin', created_at timestamptz default now(), updated_at timestamptz default now());
-create or replace function public.is_admin() returns boolean language sql stable security definer set search_path=public as $$ select exists(select 1 from public.admin_profiles where id=auth.uid() and role='admin') $$;
+create or replace function public.is_admin(user_id uuid default auth.uid()) returns boolean language sql stable security definer set search_path=public as $$ select exists(select 1 from public.admin_profiles where id=user_id and role='admin') $$;
 
 create table if not exists pages (id uuid primary key default gen_random_uuid(), slug text unique not null, title text not null, seo_title text, seo_description text, share_image_url text, is_published boolean default true, created_at timestamptz default now(), updated_at timestamptz default now());
 create table if not exists page_sections (id uuid primary key default gen_random_uuid(), page_slug text references pages(slug) on delete cascade, section_key text unique not null, section_name text not null, section_type text not null, order_index int default 0, is_active boolean default true, settings jsonb default '{}'::jsonb, created_at timestamptz default now(), updated_at timestamptz default now());
@@ -35,9 +35,11 @@ drop policy if exists "Public read pages" on pages;
 drop policy if exists "Public read sections" on page_sections;
 drop policy if exists "Public read fields" on section_fields;
 drop policy if exists "Public read theme" on theme_settings;
+drop policy if exists "Public can read theme settings" on theme_settings;
 drop policy if exists "Public read navigation" on navigation_items;
 drop policy if exists "Public read socials" on social_links;
 drop policy if exists "Public read media" on media_assets;
+drop policy if exists "Public can read media assets" on media_assets;
 drop policy if exists "Public read published news" on news;
 drop policy if exists "Public read active content" on timeline;
 drop policy if exists "Public read active projects" on projects;
@@ -54,15 +56,18 @@ drop policy if exists "Public insert applications" on fiti_applications;
 do $$ declare t text; begin foreach t in array array['pages','page_sections','section_fields','theme_settings','media_assets','navigation_items','social_links','timeline','projects','impact_stats','gallery','news','partners','fiti_editions','fiti_program','fiti_companies','fiti_workshops','fiti_archive','contact_messages','fiti_applications','content_revisions'] loop execute format('drop policy if exists "Admin manage %I" on public.%I', t, t); end loop; end $$;
 drop policy if exists "Public read site media" on storage.objects;
 drop policy if exists "Admins manage site media" on storage.objects;
+drop policy if exists "Authenticated upload site media" on storage.objects;
+drop policy if exists "Authenticated update site media" on storage.objects;
+drop policy if exists "Authenticated delete site media" on storage.objects;
 
 create policy "Admins manage admin profiles" on admin_profiles for all using (public.is_admin() or auth.uid()=id) with check (public.is_admin() or auth.uid()=id);
 create policy "Public read pages" on pages for select using (is_published=true);
 create policy "Public read sections" on page_sections for select using (is_active=true);
 create policy "Public read fields" on section_fields for select using (true);
-create policy "Public read theme" on theme_settings for select using (true);
+create policy "Public can read theme settings" on theme_settings for select to anon, authenticated using (true);
 create policy "Public read navigation" on navigation_items for select using (is_active=true);
 create policy "Public read socials" on social_links for select using (is_active=true);
-create policy "Public read media" on media_assets for select using (true);
+create policy "Public can read media assets" on media_assets for select to anon, authenticated using (true);
 create policy "Public read published news" on news for select using (published=true);
 create policy "Public read active content" on timeline for select using (is_active=true);
 create policy "Public read active projects" on projects for select using (is_active=true);
@@ -80,7 +85,7 @@ create policy "Public insert applications" on fiti_applications for insert with 
 do $$ declare t text; begin foreach t in array array['pages','page_sections','section_fields','theme_settings','media_assets','navigation_items','social_links','timeline','projects','impact_stats','gallery','news','partners','fiti_editions','fiti_program','fiti_companies','fiti_workshops','fiti_archive','contact_messages','fiti_applications','content_revisions'] loop execute format('create policy "Admin manage %I" on public.%I for all using (public.is_admin()) with check (public.is_admin())', t, t); end loop; end $$;
 
 insert into storage.buckets (id,name,public) values ('site-media','site-media',true) on conflict (id) do update set public=true;
-create policy "Public read site media" on storage.objects for select using (bucket_id='site-media');
+create policy "Public read site media" on storage.objects for select to anon, authenticated using (bucket_id='site-media');
 create policy "Admins manage site media" on storage.objects for all using (bucket_id='site-media' and public.is_admin()) with check (bucket_id='site-media' and public.is_admin());
 
 -- Supabase Storage policies for Media Library uploads.

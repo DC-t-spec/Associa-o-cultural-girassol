@@ -237,3 +237,15 @@ Os formulários públicos gravam directamente no Supabase através do cliente p�
 - **Media Library lista vazia**: confirme que `media_assets` existe, que RLS foi aplicado e que o utilizador está autenticado.
 - **Build de GitHub Pages sem Supabase**: é esperado continuar a passar; o site público usa fallback e o CMS mostra aviso de configuração.
 - **Logotipo não aparece**: confirme que o URL público abre no navegador. Se falhar, o site volta automaticamente para `GirassolLogo`, `FitiLogo` ou símbolo SVG do fundo animado.
+
+## Como testar logotipos CMS → site público
+
+1. Entrar em `/admin` com um utilizador existente no Supabase Auth e com perfil em `admin_profiles`.
+2. Abrir **Media Library** no CMS e carregar a imagem pretendida. A Media Library grava o ficheiro no bucket público `site-media` com caminho único no formato `categoria/timestamp-uuid-nome.ext`.
+3. Copiar ou seleccionar o URL público gerado pela Media Library.
+4. Abrir **Identidade Visual**, escolher o campo pretendido (`site_logo_url`, `hero_logo_url`, `footer_logo_url`, `fiti_logo_url` ou `animated_logo_url`) e guardar.
+5. Abrir a área **Diagnóstico** no CMS e executar **Testar ligação Supabase**, **Testar leitura theme_settings**, **Testar gravação theme_settings**, **Testar upload site-media** e **Testar leitura pública dos logotipos**.
+6. Abrir o site público com `?debug=theme`, por exemplo `https://dc-t-spec.github.io/Associa-o-cultural-girassol/?debug=theme`.
+7. Confirmar na caixa de debug que `theme_settings carregado` está como `sim` e que `site_logo_url`, `hero_logo_url`, `footer_logo_url`, `fiti_logo_url` ou `animated_logo_url` mostram o URL guardado.
+8. Confirmar na mesma caixa que o `ManagedLogo` correspondente indica `imagem real`, a `key usada` correcta e o URL público esperado.
+9. Actualizar a página. O logotipo deve mudar sem deploy novo, sem hardcode e sem imagem adicionada ao GitHub. Se aparecer `fallback`, verificar a mensagem exacta do Diagnóstico: RLS, bucket `site-media`, URL vazio, utilizador sem admin ou erro real devolvido pelo Supabase.

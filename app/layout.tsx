@@ -1,4 +1,5 @@
 import './globals.css';
+import { ThemeDebugPanel } from '@/components/ui/ThemeDebugPanel';
 
 export const metadata = {
   title: 'Associação Cultural Girassol | Teatro, Cultura e Juventude em Moçambique',
@@ -9,7 +10,7 @@ export const metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="pt">
-      <body className="font-sans">{children}</body>
+      <body className="font-sans">{children}<ThemeDebugPanel /></body>
     </html>
   );
 }

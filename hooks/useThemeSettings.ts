@@ -47,6 +47,8 @@ export function useThemeSettings(initialSettings?: ClientThemeSettings) {
   const fallbackSettings = useMemo(() => ({ ...cmsFallbackTheme, ...(initialSettings ?? {}) }), [initialSettings]);
   const [settings, setSettings] = useState<ClientThemeSettings>(fallbackSettings);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [updatedAtMap, setUpdatedAtMap] = useState<Record<string, string>>({});
 
   useEffect(() => {
     setSettings(fallbackSettings);
@@ -55,6 +57,8 @@ export function useThemeSettings(initialSettings?: ClientThemeSettings) {
   const refresh = useCallback(async () => {
     if (!isSupabaseConfigured || !supabase || typeof window === 'undefined') {
       setSettings(fallbackSettings);
+      setUpdatedAtMap({});
+      setError(isSupabaseConfigured ? null : 'Supabase não configurado.');
       setLoading(false);
       return fallbackSettings;
     }
@@ -64,11 +68,16 @@ export function useThemeSettings(initialSettings?: ClientThemeSettings) {
     setLoading(false);
 
     if (error) {
+      setError(error.message);
       setSettings(fallbackSettings);
+      setUpdatedAtMap({});
       return fallbackSettings;
     }
 
-    const nextSettings = { ...fallbackSettings, ...rowsToSettings(data as ThemeSettingRow[]) };
+    const rows = data as ThemeSettingRow[];
+    const nextSettings = { ...fallbackSettings, ...rowsToSettings(rows) };
+    setError(null);
+    setUpdatedAtMap(Object.fromEntries((rows ?? []).map((row) => [toSafeString(row.key).trim(), toSafeString(row.updated_at).trim()]).filter(([key]) => key.length > 0)));
     setSettings(nextSettings);
     return nextSettings;
   }, [fallbackSettings]);
@@ -77,5 +86,5 @@ export function useThemeSettings(initialSettings?: ClientThemeSettings) {
     void refresh();
   }, [refresh]);
 
-  return { settings, loading, refresh };
+  return { settings, loading, error, refresh, updatedAtMap };
 }
