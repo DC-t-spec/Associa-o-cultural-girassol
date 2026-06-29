@@ -23,13 +23,6 @@ type Confirmation = {
   updated_at: string | null;
 };
 
-const aliases: Record<string, string[]> = {
-  primary_button_text: ['primary_button_label'],
-  primary_button_link: ['primary_button_url'],
-  secondary_button_text: ['secondary_button_label'],
-  secondary_button_link: ['secondary_button_url'],
-};
-
 function jsonOrEmpty(field: SectionField, value: string) {
   if (field.field_type !== 'json') return null;
   try {
@@ -73,21 +66,14 @@ export function SectionEditor({ section, fields }: { section: PageSection; field
     setSaving(true);
     setMessage('A guardar em public.section_fields...');
     try {
-      const keysToSave = new Set(savedFields.map((field) => field.field_key));
-      Object.entries(aliases).forEach(([legacy, aliasList]) => {
-        if (keysToSave.has(legacy)) aliasList.forEach((alias) => keysToSave.add(alias));
-      });
       const fieldsByKey = new Map(savedFields.map((field) => [field.field_key, field]));
-      for (const key of keysToSave) {
-        const sourceKey = fieldsByKey.has(key) ? key : Object.entries(aliases).find(([, aliasList]) => aliasList.includes(key))?.[0] ?? key;
-        const sourceField = fieldsByKey.get(sourceKey);
-        if (!sourceField) continue;
-        const value = values[sourceKey] ?? '';
+      for (const sourceField of savedFields) {
+        const value = values[sourceField.field_key] ?? '';
         await saveSectionField({
           sectionId: section.id,
-          fieldKey: key,
-          fieldLabel: key === sourceKey ? sourceField.field_label : key,
-          fieldType: key.includes('_url') || key.includes('_link') ? 'url' : sourceField.field_type,
+          fieldKey: sourceField.field_key,
+          fieldLabel: sourceField.field_label,
+          fieldType: sourceField.field_type,
           value: sourceField.field_type === 'json' ? '' : value,
           jsonValue: jsonOrEmpty(sourceField, value),
           orderIndex: sourceField.order_index,
@@ -99,7 +85,7 @@ export function SectionEditor({ section, fields }: { section: PageSection; field
       setSavedFields(confirmed.filter((field) => fieldsByKey.has(field.field_key)));
       setValues((current) => ({ ...current, ...Object.fromEntries(confirmed.map((field) => [field.field_key, field.field_type === 'json' ? JSON.stringify(field.field_json ?? {}, null, 2) : field.field_value ?? ''])) }));
       const titleConfirmation = (confirmed as Confirmation[]).find((field) => field.field_key === 'title') ?? (confirmed as Confirmation[])[0];
-      setMessage(titleConfirmation ? `Guardado com sucesso. section_id: ${titleConfirmation.section_id} · field_key: ${titleConfirmation.field_key} · valor confirmado no banco: ${titleConfirmation.field_value ?? JSON.stringify(titleConfirmation.field_json ?? {})} · updated_at: ${titleConfirmation.updated_at}` : 'Guardado com sucesso, mas a confirmação não devolveu campos.');
+      setMessage(titleConfirmation ? `Guardado com sucesso. Tabela: section_fields · section_id: ${titleConfirmation.section_id} · Campo: ${titleConfirmation.field_key} · Valor confirmado: ${titleConfirmation.field_value ?? JSON.stringify(titleConfirmation.field_json ?? {})} · updated_at: ${titleConfirmation.updated_at}` : 'Guardado com sucesso, mas a confirmação não devolveu campos.');
     } catch (error) {
       setMessage(`Erro Supabase: ${error instanceof Error ? error.message : String(error)}`);
     } finally {

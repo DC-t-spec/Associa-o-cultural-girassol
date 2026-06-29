@@ -23,6 +23,49 @@ const themeLabels: Record<string, string> = { primary_color:'Cor principal', sec
 const visualIdentitySections=[{title:'Logotipo da Associação',fields:[['site_logo_url','Logotipo principal da Associação','Usado na navbar, hero principal e rodapé','url'],['site_logo_alt','Texto alternativo do logotipo principal','Texto descritivo para acessibilidade','text']]},{title:'Logotipo do FITI',fields:[['fiti_logo_url','Logotipo do FITI','Usado na página FITI, hero FITI, arquivo FITI e rodapé','url'],['fiti_logo_alt','Texto alternativo FITI','Texto descritivo para acessibilidade','text']]},{title:'Favicon',fields:[['favicon_url','Favicon','Ícone do separador do navegador','url']]},{title:'Rodapé e Hero',fields:[['footer_logo_url','Logo do rodapé','Substitui o logotipo principal apenas no rodapé','url'],['hero_logo_url','Logo do hero principal','Substitui o logotipo principal apenas no hero','url']]},{title:'Fundo animado',fields:[['animated_logo_url','Logo do fundo animado','Controla o símbolo em movimento nos fundos','url'],['animated_logo_enabled','Activar logo em movimento','Liga ou desliga o logo em movimento','boolean'],['animated_logo_opacity','Opacidade do logo em movimento','Valor recomendado: 0.08','number'],['animated_logo_speed','Velocidade do logo em movimento','Valor recomendado: 42','number']]}] as const;
 const selectKeys = new Set(['background_motion_intensity','background_type','button_style']);
 
+const tableColumns: Record<string, readonly string[]> = {
+  news: ['title','slug','summary','content','image_url','category','published'],
+  projects: ['title','description','image_url','link','featured','is_active'],
+  gallery: ['title','image_url','category','description','alt_text','is_active'],
+  partners: ['name','logo_url','category','link','show_on_home','show_on_fiti','is_active'],
+  timeline: ['year','title','description','order_index','is_active'],
+  impact_stats: ['label','value','suffix','order_index','is_active'],
+  navigation_items: ['location','label','url','page_slug','order_index','is_active','is_external'],
+  social_links: ['platform','label','url','is_active','order_index'],
+  fiti_editions: ['year','theme','dates','locations','countries','description','curatorial_text','poster_url','active'],
+  fiti_program: ['edition_id','date','time','title','company','country','venue','category','synopsis','duration','age_rating','image_url','reservation_link','is_active'],
+  fiti_companies: ['edition_id','name','country','city','description','image_url','social_link','show_title','is_active'],
+  fiti_workshops: ['edition_id','title','trainer','date','time','venue','vacancies','target_audience','description','registration_link','is_active'],
+  fiti_archive: ['year','theme','dates','description','poster_url','program_pdf_url','gallery','video_url','is_active'],
+  media_assets: ['title','description','file_url','file_type','mime_type','alt_text','storage_path'],
+  theme_settings: ['key','value','value_json'],
+  contact_messages: ['name','email','phone','subject','message','type','status'],
+};
+
+const booleanFields = new Set(['published','featured','is_active','is_external','show_on_home','show_on_fiti','active']);
+const numberFields = new Set(['order_index','year','value','vacancies']);
+
+function slugify(value: string) {
+  return value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+}
+
+function coerceValue(key: string, value: unknown) {
+  if (value === undefined) return undefined;
+  if (booleanFields.has(key)) return value === true || value === 'true';
+  if (numberFields.has(key)) return value === '' || value === null ? null : Number(value);
+  return value;
+}
+
+function cleanPayloadForTable(tableName: string, payload: Row) {
+  const allowed = tableColumns[tableName] ?? [];
+  const source = { ...payload };
+  if (tableName === 'news' && !toSafeString(source.slug) && toSafeString(source.title)) source.slug = slugify(toSafeString(source.title));
+  return Object.fromEntries(allowed.flatMap((key) => {
+    const value = coerceValue(key, source[key]);
+    return value === undefined ? [] : [[key, value]];
+  }));
+}
+
 async function saveThemeSetting(key:string,value:string){
   if(!supabase) throw new Error('Supabase não configurado.');
   const { error } = await supabase.from('theme_settings').upsert({key,value},{onConflict:'key'});
@@ -38,23 +81,39 @@ function CollectionManager({ title, table, fields, fallbackRows, readOnly = fals
   const [message, setMessage] = useState('');
   useEffect(() => { if (!supabase) return; supabase.from(table).select('*').order('created_at', { ascending: false }).then(({ data, error }) => { if (error) setMessage(`Fallback activo: ${error.message}`); if (data?.length) { setRows(data as Row[]); setSelected(data[0] as Row); } }); }, [table]);
   function update(key: string, value: string) { setSelected((current) => ({ ...current, [key]: value })); }
-  async function save() { if (!supabase) return setMessage('Supabase não configurado: edite depois de configurar as variáveis públicas.'); const payload = { ...selected }; const { error, data } = selected.id ? await supabase.from(table).update(payload).eq('id', selected.id).select('*').single() : await supabase.from(table).insert(payload).select('*').single(); if (error) return setMessage(error.message); const saved = data as Row; setRows((current) => selected.id ? current.map((row) => row.id === selected.id ? saved : row) : [saved, ...current]); setSelected(saved); setMessage('Guardado com sucesso.'); }
+  async function save() {
+    if (!supabase) return setMessage('Supabase não configurado: edite depois de configurar as variáveis públicas.');
+    if (!tableColumns[table]) return setMessage(`Tabela sem mapa de escrita seguro: ${table}.`);
+    const payload = cleanPayloadForTable(table, selected);
+    const result = selected.id ? await supabase.from(table).update(payload).eq('id', selected.id).select('*').single() : await supabase.from(table).insert(payload).select('*').single();
+    if (result.error) return setMessage(result.error.message);
+    const saved = result.data as Row;
+    const confirm = saved.id ? await supabase.from(table).select('*').eq('id', saved.id).single() : { data: saved, error: null };
+    if (confirm.error) return setMessage(`Guardado, mas a confirmação falhou: ${confirm.error.message}`);
+    const confirmed = confirm.data as Row;
+    setRows((current) => selected.id ? current.map((row) => row.id === selected.id ? confirmed : row) : [confirmed, ...current]);
+    setSelected(confirmed);
+    const firstKey = fields[0]?.key ?? 'id';
+    setMessage(`Guardado com sucesso. Tabela: ${table} · ID: ${toSafeString(confirmed.id)} · Valor confirmado: ${cellValue(confirmed, firstKey)}${toSafeString(confirmed.updated_at) ? ` · updated_at: ${toSafeString(confirmed.updated_at)}` : ''}`);
+  }
   async function remove(row: Row) { if (!supabase || !row.id || readOnly) return; if (!confirm(`Apagar item de ${title}?`)) return; const { error } = await supabase.from(table).delete().eq('id', row.id); if (error) return setMessage(error.message); setRows((current) => current.filter((item) => item.id !== row.id)); setSelected(emptyRow(fields)); setMessage('Item apagado.'); }
   return <div className="mt-4 grid gap-4 lg:grid-cols-[1fr_1.1fr]"><div className="space-y-2">{rows.map((row, index) => <button key={row.id ?? index} type="button" onClick={() => setSelected(row)} className="block w-full rounded-2xl border border-white/10 bg-black/30 p-3 text-left hover:border-sun"><b className="text-white">{cellValue(row, fields[0].key) || `${title} ${index + 1}`}</b><p className="text-xs text-zinc-400">{fields.slice(1, 3).map((f) => cellValue(row, f.key)).filter(Boolean).join(' · ') || 'Item editável'}</p></button>)}</div><div className="rounded-2xl border border-white/10 bg-black/30 p-4"><div className="mb-3 flex flex-wrap gap-2"><button type="button" onClick={() => setSelected(emptyRow(fields))} className="inline-flex items-center gap-2 rounded-full border border-white/10 px-3 py-2 text-sm"><Plus size={16}/> Novo</button><button type="button" onClick={save} className="inline-flex items-center gap-2 rounded-full bg-sun px-3 py-2 text-sm font-bold text-black"><Save size={16}/> Guardar</button>{selected.id && !readOnly && <button type="button" onClick={() => remove(selected)} className="inline-flex items-center gap-2 rounded-full border border-red-500/40 px-3 py-2 text-sm text-red-100"><Trash2 size={16}/> Apagar</button>}</div><div className="grid gap-3 md:grid-cols-2">{fields.map((field) => <label key={field.key} className="text-sm text-zinc-300"><span>{field.label}</span>{field.type === 'textarea' ? <textarea value={cellValue(selected, field.key)} onChange={(e) => update(field.key, e.target.value)} className="mt-1 min-h-24 w-full rounded-xl border border-white/10 bg-zinc-950 px-3 py-2 text-white" /> : field.type === 'boolean' ? <select value={cellValue(selected, field.key) || 'true'} onChange={(e) => update(field.key, e.target.value)} className="mt-1 w-full rounded-xl border border-white/10 bg-zinc-950 px-3 py-2 text-white"><option value="true">Activo</option><option value="false">Inactivo</option></select> : <input type={field.type === 'number' ? 'number' : field.type === 'date' ? 'date' : field.type === 'url' ? 'url' : 'text'} value={cellValue(selected, field.key)} onChange={(e) => update(field.key, e.target.value)} className="mt-1 w-full rounded-xl border border-white/10 bg-zinc-950 px-3 py-2 text-white" />}</label>)}</div>{message && <p className="mt-3 rounded-xl border border-sun/20 bg-sun/10 p-3 text-sm text-sun">{message}</p>}</div></div>;
 }
 
 const managers = [
-  {area:'Menus',table:'navigation_items',fields:[{key:'label',label:'Etiqueta'},{key:'url',label:'URL',type:'url'},{key:'location',label:'Menu'},{key:'order_index',label:'Ordem',type:'number'},{key:'is_active',label:'Activo',type:'boolean'},{key:'is_external',label:'Externo',type:'boolean'}],fallbackRows:cmsFallbackNavigation},
+  {area:'Menus',table:'navigation_items',fields:[{key:'label',label:'Etiqueta'},{key:'url',label:'URL',type:'url'},{key:'page_slug',label:'Página slug'},{key:'location',label:'Menu'},{key:'order_index',label:'Ordem',type:'number'},{key:'is_active',label:'Activo',type:'boolean'},{key:'is_external',label:'Externo',type:'boolean'}],fallbackRows:cmsFallbackNavigation},
+  {area:'Redes sociais',table:'social_links',fields:[{key:'platform',label:'Plataforma'},{key:'label',label:'Etiqueta'},{key:'url',label:'URL',type:'url'},{key:'order_index',label:'Ordem',type:'number'},{key:'is_active',label:'Activo',type:'boolean'}],fallbackRows:[]},
   {area:'Galeria',table:'gallery',fields:[{key:'title',label:'Título'},{key:'category',label:'Categoria'},{key:'image_url',label:'Imagem',type:'url'},{key:'description',label:'Descrição',type:'textarea'},{key:'alt_text',label:'Texto alternativo'},{key:'is_active',label:'Activo',type:'boolean'}],fallbackRows:gallery},
-  {area:'Notícias',table:'news',fields:[{key:'title',label:'Título'},{key:'slug',label:'Slug'},{key:'summary',label:'Resumo',type:'textarea'},{key:'content',label:'Conteúdo',type:'textarea'},{key:'image_url',label:'Imagem',type:'url'},{key:'published',label:'Publicado',type:'boolean'}],fallbackRows:news},
+  {area:'Notícias',table:'news',fields:[{key:'title',label:'Título'},{key:'slug',label:'Slug'},{key:'summary',label:'Resumo',type:'textarea'},{key:'content',label:'Conteúdo',type:'textarea'},{key:'image_url',label:'Imagem',type:'url'},{key:'category',label:'Categoria'},{key:'published',label:'Publicado',type:'boolean'}],fallbackRows:news},
   {area:'Projectos',table:'projects',fields:[{key:'title',label:'Título'},{key:'description',label:'Descrição',type:'textarea'},{key:'image_url',label:'Imagem',type:'url'},{key:'link',label:'Link',type:'url'},{key:'featured',label:'Destaque',type:'boolean'},{key:'is_active',label:'Activo',type:'boolean'}],fallbackRows:projects},
   {area:'Timeline',table:'timeline',fields:[{key:'year',label:'Ano'},{key:'title',label:'Título'},{key:'description',label:'Descrição',type:'textarea'},{key:'order_index',label:'Ordem',type:'number'},{key:'is_active',label:'Activo',type:'boolean'}],fallbackRows:timeline},
   {area:'Impacto',table:'impact_stats',fields:[{key:'label',label:'Indicador'},{key:'value',label:'Valor',type:'number'},{key:'suffix',label:'Sufixo'},{key:'order_index',label:'Ordem',type:'number'},{key:'is_active',label:'Activo',type:'boolean'}],fallbackRows:impactStats.map((label, order_index) => ({ label, value: 0, suffix: '', order_index, is_active: true }))},
-  {area:'Parceiros',table:'partners',fields:[{key:'name',label:'Nome'},{key:'category',label:'Categoria'},{key:'logo_url',label:'Logotipo',type:'url'},{key:'link',label:'Link',type:'url'},{key:'show_on_home',label:'Homepage',type:'boolean'},{key:'show_on_fiti',label:'FITI',type:'boolean'}],fallbackRows:partners},
-  {area:'Programação FITI',table:'fiti_program',fields:[{key:'title',label:'Título'},{key:'date',label:'Data',type:'date'},{key:'time',label:'Hora'},{key:'company',label:'Companhia'},{key:'venue',label:'Local'},{key:'synopsis',label:'Sinopse',type:'textarea'},{key:'is_active',label:'Activo',type:'boolean'}],fallbackRows:program},
-  {area:'Companhias FITI',table:'fiti_companies',fields:[{key:'name',label:'Nome'},{key:'country',label:'País'},{key:'city',label:'Cidade'},{key:'description',label:'Descrição',type:'textarea'},{key:'image_url',label:'Imagem',type:'url'},{key:'show_title',label:'Espectáculo'},{key:'is_active',label:'Activo',type:'boolean'}],fallbackRows:companies},
-  {area:'Oficinas FITI',table:'fiti_workshops',fields:[{key:'title',label:'Título'},{key:'trainer',label:'Formador'},{key:'date',label:'Data',type:'date'},{key:'time',label:'Hora'},{key:'venue',label:'Local'},{key:'target_audience',label:'Público-alvo'},{key:'is_active',label:'Activo',type:'boolean'}],fallbackRows:workshops},
-  {area:'Arquivo FITI',table:'fiti_archive',fields:[{key:'year',label:'Ano'},{key:'theme',label:'Tema'},{key:'dates',label:'Datas'},{key:'description',label:'Descrição',type:'textarea'},{key:'poster_url',label:'Cartaz',type:'url'},{key:'program_pdf_url',label:'Programa PDF',type:'url'},{key:'is_active',label:'Activo',type:'boolean'}],fallbackRows:archive},
+  {area:'Parceiros',table:'partners',fields:[{key:'name',label:'Nome'},{key:'category',label:'Categoria'},{key:'logo_url',label:'Logotipo',type:'url'},{key:'link',label:'Link',type:'url'},{key:'show_on_home',label:'Homepage',type:'boolean'},{key:'show_on_fiti',label:'FITI',type:'boolean'},{key:'is_active',label:'Activo',type:'boolean'}],fallbackRows:partners},
+  {area:'Edições FITI',table:'fiti_editions',fields:[{key:'year',label:'Ano',type:'number'},{key:'theme',label:'Tema'},{key:'dates',label:'Datas'},{key:'locations',label:'Locais'},{key:'countries',label:'Países'},{key:'description',label:'Descrição',type:'textarea'},{key:'curatorial_text',label:'Texto curatorial',type:'textarea'},{key:'poster_url',label:'Cartaz',type:'url'},{key:'active',label:'Activo',type:'boolean'}],fallbackRows:[]},
+  {area:'Programação FITI',table:'fiti_program',fields:[{key:'title',label:'Título'},{key:'edition_id',label:'Edição ID'},{key:'date',label:'Data',type:'date'},{key:'time',label:'Hora'},{key:'company',label:'Companhia'},{key:'country',label:'País'},{key:'venue',label:'Local'},{key:'category',label:'Categoria'},{key:'synopsis',label:'Sinopse',type:'textarea'},{key:'duration',label:'Duração'},{key:'age_rating',label:'Classificação etária'},{key:'image_url',label:'Imagem',type:'url'},{key:'reservation_link',label:'Reserva',type:'url'},{key:'is_active',label:'Activo',type:'boolean'}],fallbackRows:program},
+  {area:'Companhias FITI',table:'fiti_companies',fields:[{key:'edition_id',label:'Edição ID'},{key:'name',label:'Nome'},{key:'country',label:'País'},{key:'city',label:'Cidade'},{key:'description',label:'Descrição',type:'textarea'},{key:'image_url',label:'Imagem',type:'url'},{key:'social_link',label:'Rede social',type:'url'},{key:'show_title',label:'Espectáculo'},{key:'is_active',label:'Activo',type:'boolean'}],fallbackRows:companies},
+  {area:'Oficinas FITI',table:'fiti_workshops',fields:[{key:'edition_id',label:'Edição ID'},{key:'title',label:'Título'},{key:'trainer',label:'Formador'},{key:'date',label:'Data',type:'date'},{key:'time',label:'Hora'},{key:'venue',label:'Local'},{key:'vacancies',label:'Vagas',type:'number'},{key:'target_audience',label:'Público-alvo'},{key:'description',label:'Descrição',type:'textarea'},{key:'registration_link',label:'Inscrição',type:'url'},{key:'is_active',label:'Activo',type:'boolean'}],fallbackRows:workshops},
+  {area:'Arquivo FITI',table:'fiti_archive',fields:[{key:'year',label:'Ano',type:'number'},{key:'theme',label:'Tema'},{key:'dates',label:'Datas'},{key:'description',label:'Descrição',type:'textarea'},{key:'poster_url',label:'Cartaz',type:'url'},{key:'program_pdf_url',label:'Programa PDF',type:'url'},{key:'gallery',label:'Galeria JSON',type:'textarea'},{key:'video_url',label:'Vídeo',type:'url'},{key:'is_active',label:'Activo',type:'boolean'}],fallbackRows:archive},
 ] as const;
 
 export function AdminDashboard(){
