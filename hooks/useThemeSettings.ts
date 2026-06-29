@@ -46,7 +46,7 @@ function rowsToSettings(rows: ThemeSettingRow[] | null | undefined): ClientTheme
 export function useThemeSettings(initialSettings?: ClientThemeSettings) {
   const fallbackSettings = useMemo(() => ({ ...cmsFallbackTheme, ...(initialSettings ?? {}) }), [initialSettings]);
   const [settings, setSettings] = useState<ClientThemeSettings>(fallbackSettings);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [updatedAtMap, setUpdatedAtMap] = useState<Record<string, string>>({});
 
