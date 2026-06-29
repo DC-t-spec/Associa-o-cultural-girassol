@@ -3,6 +3,7 @@
 import { ChangeEvent, FormEvent, useEffect, useMemo, useState } from 'react';
 import { Copy, Trash2 } from 'lucide-react';
 import { isSupabaseConfigured, supabase } from '@/lib/supabase';
+import { toSafeString } from '@/lib/utils';
 import type { MediaAsset } from '@/types/cms';
 
 const BUCKET = 'site-media';
@@ -97,12 +98,12 @@ export function MediaLibrary({ selectable = false, onSelect, compact = false }: 
 
     const { data: publicData } = supabase.storage.from(BUCKET).getPublicUrl(storagePath);
     const asset = {
-      title: form.title.trim() || file.name,
-      description: form.description.trim(),
+      title: toSafeString(form.title).trim() || file.name,
+      description: toSafeString(form.description).trim(),
       file_url: publicData.publicUrl,
       file_type: getFileType(file),
       mime_type: file.type,
-      alt_text: form.altText.trim(),
+      alt_text: toSafeString(form.altText).trim(),
       storage_path: storagePath,
     };
     const insert = await supabase.from('media_assets').insert(asset).select('*').single();
