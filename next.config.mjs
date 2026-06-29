@@ -1,14 +1,14 @@
-const repo = 'Associa-o-cultural-girassol';
+const repoName = 'Associa-o-cultural-girassol';
 const isGitHubPages = process.env.GITHUB_ACTIONS === 'true';
-const githubPagesPath = `/${repo}`;
+const githubPagesPath = `/${repoName}`;
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   output: 'export',
+  trailingSlash: true,
   images: {
     unoptimized: true,
   },
-  trailingSlash: true,
   ...(isGitHubPages
     ? {
         basePath: githubPagesPath,
